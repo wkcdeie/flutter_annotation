@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      flutter_cache_generator:
+        enabled: true
+
+builders:
+  config_builder:
+    target: ":flutter_cache_generator"
+    import: 'package:flutter_cache_generator/builder.dart'
+    builder_factories: [ 'cacheBuilder' ]
+    build_extensions: { '.dart': [ '.cache.dart' ] }
+    auto_apply: root_package
+    build_to: source

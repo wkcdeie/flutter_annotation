@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      flutter_log_generator:
+        enabled: true
+
+builders:
+  config_builder:
+    target: ":flutter_log_generator"
+    import: 'package:flutter_log_generator/builder.dart'
+    builder_factories: [ 'logBuilder' ]
+    build_extensions: { '.dart': [ '.log.dart' ] }
+    auto_apply: root_package
+    build_to: source

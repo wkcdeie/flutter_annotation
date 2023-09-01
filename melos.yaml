@@ -1,0 +1,26 @@
+name: flutter_annotation
+repository: https://github.com/wkcdeie/flutter_annotation.git
+sdkPath: .fvm/flutter_sdk
+
+packages:
+  - common/*
+  - configure/*
+  - configure_generator/*
+  - http/*
+  - http_generator/*
+  - json/*
+  - json_generator/*
+  - router/*
+  - router_generator/*
+  - cache/*
+  - cache_generator/*
+  - log/*
+  - log_generator/*
+  - sqlite/*
+  - sqlite_generator/*
+  - example/*
+
+scripts:
+  clean: melos exec -- flutter clean
+  pub-get: melos exec -- flutter pub get
+  pub-upgrade: melos exec -- flutter pub upgrade

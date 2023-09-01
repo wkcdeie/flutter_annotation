@@ -1,0 +1,16 @@
+name: flutter_annotation_log
+description: A new Flutter project.
+version: 0.0.1
+homepage:
+
+environment:
+  sdk: '>=2.19.0 <3.0.0'
+
+dependencies:
+  logging: ^1.2.0
+  stack_trace: ^1.11.0
+  path: ^1.8.0
+
+dev_dependencies:
+  test: any
+  flutter_lints: ^2.0.0

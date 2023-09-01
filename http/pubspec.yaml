@@ -1,0 +1,15 @@
+name: flutter_annotation_http
+description: A new Flutter project.
+version: 0.0.1
+homepage:
+
+environment:
+  sdk: '>=2.19.0 <3.0.0'
+
+dependencies:
+  async: ^2.10.0
+  http: ^0.13.6
+
+dev_dependencies:
+  test: any
+  flutter_lints: ^2.0.0

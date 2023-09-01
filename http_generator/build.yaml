@@ -1,0 +1,31 @@
+targets:
+  $default:
+    builders:
+      flutter_http_generator:
+        enabled: true
+
+builders:
+  endpoint_builder:
+    target: ":flutter_http_generator"
+    import: 'package:flutter_http_generator/builder.dart'
+    builder_factories: [ 'endpointBuilder' ]
+    build_extensions: { '.dart': [ '.api.dart' ] }
+    auto_apply: root_package
+    build_to: source
+
+  middleware_object_builder:
+    target: ":flutter_http_generator"
+    import: 'package:flutter_http_generator/builder.dart'
+    builder_factories: [ 'middlewareObjectBuilder' ]
+    build_extensions: { '.dart': [ '.mdw.dart' ] }
+    auto_apply: root_package
+    build_to: source
+    runs_before: [ 'flutter_http_generator|http_middleware_builder' ]
+
+  http_middleware_builder:
+    target: ":flutter_http_generator"
+    import: 'package:flutter_http_generator/builder.dart'
+    builder_factories: [ 'httpMiddlewareBuilder' ]
+    build_extensions: { '.dart': [ '.middleware.dart' ] }
+    auto_apply: root_package
+    build_to: source
