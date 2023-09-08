@@ -363,9 +363,7 @@ class EndpointCollector {
   String _handleReturnType(String returnType, String? responseType) {
     StringBuffer code = StringBuffer();
     const reason = 'Could not find acceptable representation.';
-    final nonnullReturnType = returnType.lastIndexOf('?') == -1
-        ? returnType
-        : returnType.substring(0, returnType.length - 1);
+    final nonnullReturnType = fac.TypeSplitter.nonnullType(returnType);
     if (nonnullReturnType == 'http.Response') {
       code.writeln('return response;');
     } else if (nonnullReturnType == 'void') {
@@ -381,13 +379,9 @@ class EndpointCollector {
         code.writeln(
             'if (responseData is Map) {return $nonnullReturnType.fromJson(Map<String, dynamic>.from(responseData));}');
       } else if (fac.TypeChecker.isListType(nonnullReturnType)) {
-        final modelTypeStart = nonnullReturnType.indexOf('<');
-        final modelTypeEnd = nonnullReturnType.indexOf('>');
-        final genericType = modelTypeStart != -1 && modelTypeEnd != -1
-            ? nonnullReturnType.substring(modelTypeStart + 1, modelTypeEnd)
-            : null;
+        final genericType = fac.TypeSplitter.genericType(nonnullReturnType) ?? nonnullReturnType;
         code.writeln('if (responseData is List) {');
-        if (genericType != null && fac.TypeChecker.isCustomClass(genericType)) {
+        if (fac.TypeChecker.isCustomClass(genericType)) {
           code.writeln(
               'return List<Map<String, dynamic>>.from(responseData).map($genericType.fromJson).toList();');
         } else {
@@ -417,14 +411,17 @@ class EndpointCollector {
         pb.type = refer(parameter.type.getDisplayString(withNullability: true));
         pb.name = parameter.name;
         pb.named = parameter.isNamed;
+        if (pb.named) {
+          pb.required = parameter.isRequired;
+        }
         if (parameter.defaultValueCode != null) {
           pb.defaultTo = Code(parameter.defaultValueCode!);
         }
       });
-      if (parameter.isRequired) {
-        mb.requiredParameters.add(param);
-      } else if (parameter.isOptional) {
+      if (parameter.isRequiredNamed || parameter.isOptional) {
         mb.optionalParameters.add(param);
+      } else if (parameter.isRequired) {
+        mb.requiredParameters.add(param);
       }
       final isNullability =
           parameter.type.nullabilitySuffix == NullabilitySuffix.question;
