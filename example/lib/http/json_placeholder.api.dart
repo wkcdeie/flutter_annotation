@@ -9,8 +9,6 @@ part of 'json_placeholder.dart';
 class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   _$JsonPlaceholderApiImpl([this._chain]);
 
-  final String _baseUrl = 'https://jsonplaceholder.typicode.com';
-
   final Map<String, dynamic> _parameters = {'x-app-platform': 'ios'};
 
   final Map<String, String> _headers = {'x-lang-platform': 'Dart'};
@@ -22,8 +20,9 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     final queryParameters = {
       ..._parameters,
     };
-    final urlString =
-        _encodeUrl('/todos/${Uri.encodeQueryComponent(id)}', queryParameters);
+    final urlString = _encodeUrl(
+        'https://jsonplaceholder.typicode.com/todos/${Uri.encodeQueryComponent(id)}',
+        queryParameters);
     final response = await doWithClient(
       (client) => client.get(Uri.parse(urlString), headers: {
         ..._headers,
@@ -44,7 +43,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
       ..._parameters,
       if (title != null) 'title': title,
     };
-    final urlString = _encodeUrl('/todos', queryParameters);
+    final urlString = _encodeUrl(
+        'https://jsonplaceholder.typicode.com/todos', queryParameters);
     final response = await doWithClient(
       (client) => client.get(Uri.parse(urlString), headers: {
         ..._headers,
@@ -63,7 +63,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
 
   @override
   Future<TodoModel> createTodo(AddTodo data) async {
-    final urlString = _encodeUrl('/todos', {});
+    final urlString =
+        _encodeUrl('https://jsonplaceholder.typicode.com/todos', {});
     final body = jsonEncode({
       ..._parameters,
       ...data.toJson(),
@@ -92,7 +93,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     int id,
     AddTodo data,
   ) async {
-    final urlString = _encodeUrl('/todos/$id', {});
+    final urlString =
+        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
     final body = jsonEncode({
       ..._parameters,
       ..._todoToJson.call(data),
@@ -121,7 +123,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     int id,
     String title,
   ) async {
-    final urlString = _encodeUrl('/todos/$id', {});
+    final urlString =
+        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
     final body = {
       ..._parameters,
       'title': title,
@@ -147,7 +150,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
 
   @override
   Future<http.Response> deleteTodo(int id) async {
-    final urlString = _encodeUrl('/todos/$id', {});
+    final urlString =
+        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
     final body = {
       ..._parameters,
     };
@@ -168,22 +172,16 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     String urlPath,
     Map<String, dynamic> queryParameters,
   ) {
-    String urlString = _baseUrl;
-    if (urlPath.startsWith('http') || urlPath.startsWith('https')) {
-      urlString = urlPath;
-    } else {
-      urlString += urlPath;
-    }
     if (queryParameters.isEmpty) {
-      return urlString;
+      return urlPath;
     }
     final queryString = queryParameters.entries
         .map((e) =>
             '${Uri.encodeQueryComponent(e.key)}=${e.value is String ? Uri.encodeQueryComponent(e.value) : e.value}')
         .join('&');
-    if (urlString.lastIndexOf('?') != -1) {
-      return '$urlString&$queryString';
+    if (urlPath.lastIndexOf('?') != -1) {
+      return '$urlPath&$queryString';
     }
-    return '$urlString?$queryString';
+    return '$urlPath?$queryString';
   }
 }

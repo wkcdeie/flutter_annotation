@@ -9,8 +9,6 @@ part of 'http_bin.dart';
 class _$HttpBinApiImpl implements HttpBinApi {
   _$HttpBinApiImpl([this._chain]);
 
-  final String _baseUrl = 'https://httpbin.org';
-
   final RetryOptions _retryOptions = RetryOptions(
     whenResponse: retryWhenResponse,
   );
@@ -19,7 +17,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
 
   @override
   Future<void> getStatus(int codes) async {
-    final urlString = _encodeUrl('/status/$codes', {});
+    final urlString = _encodeUrl('https://httpbin.org/status/$codes', {});
     await doWithClient(
       (client) => client.get(Uri.parse(urlString)),
       chain: _chain,
@@ -30,7 +28,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
 
   @override
   Future<Map<dynamic, dynamic>> runJson() async {
-    final urlString = _encodeUrl('/json', {});
+    final urlString = _encodeUrl('https://httpbin.org/json', {});
     final response = await doWithClient(
       (client) => client.get(Uri.parse(urlString)),
       chain: _chain,
@@ -47,7 +45,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
 
   @override
   Future<String> getRobotsTxt() async {
-    final urlString = _encodeUrl('/robots.txt', {});
+    final urlString = _encodeUrl('https://httpbin.org/robots.txt', {});
     final response = await doWithClient(
       (client) => client.get(Uri.parse(urlString)),
       chain: _chain,
@@ -59,7 +57,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
 
   @override
   Future<Uint8List> runBytes(int n) async {
-    final urlString = _encodeUrl('/bytes/$n', {});
+    final urlString = _encodeUrl('https://httpbin.org/bytes/$n', {});
     final response = await doWithClient(
       (client) => client.get(Uri.parse(urlString)),
       chain: _chain,
@@ -76,7 +74,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
     UploadEnvInfo envInfo,
     String imagePath,
   ) async {
-    final urlString = _encodeUrl('/upload', {});
+    final urlString = _encodeUrl('https://httpbin.org/upload', {});
     final request = http.MultipartRequest('POST', Uri.parse(urlString));
     request.headers.addAll({'type': Uri.encodeQueryComponent(type)});
     request.fields.addAll({'from': from});
@@ -100,7 +98,7 @@ class _$HttpBinApiImpl implements HttpBinApi {
     int codes,
     CancelToken cancelToken,
   ) async {
-    final urlString = _encodeUrl('/status/$codes', {});
+    final urlString = _encodeUrl('https://httpbin.org/status/$codes', {});
     await doWithClient(
       (client) => client.get(Uri.parse(urlString)),
       chain: _chain,
@@ -114,22 +112,16 @@ class _$HttpBinApiImpl implements HttpBinApi {
     String urlPath,
     Map<String, dynamic> queryParameters,
   ) {
-    String urlString = _baseUrl;
-    if (urlPath.startsWith('http') || urlPath.startsWith('https')) {
-      urlString = urlPath;
-    } else {
-      urlString += urlPath;
-    }
     if (queryParameters.isEmpty) {
-      return urlString;
+      return urlPath;
     }
     final queryString = queryParameters.entries
         .map((e) =>
             '${Uri.encodeQueryComponent(e.key)}=${e.value is String ? Uri.encodeQueryComponent(e.value) : e.value}')
         .join('&');
-    if (urlString.lastIndexOf('?') != -1) {
-      return '$urlString&$queryString';
+    if (urlPath.lastIndexOf('?') != -1) {
+      return '$urlPath&$queryString';
     }
-    return '$urlString?$queryString';
+    return '$urlPath?$queryString';
   }
 }

@@ -29,14 +29,14 @@ class EndpointCollector {
   bool _hasHeaders = false;
   bool _hasParameters = false;
   bool _hasRetry = false;
-  String? _baseUrl;
+  // String? _baseUrl;
   int? _timeout;
 
   EndpointCollector(this.fileName);
 
   String collect(ClassElement element, ConstantReader annotation) {
-    _baseUrl = annotation.peek('baseUrl')?.stringValue;
     _timeout = annotation.peek('timeout')?.intValue;
+    final baseUrl = annotation.peek('baseUrl')?.stringValue;
     final parameterField = annotation.peek('parameters')?.objectValue;
     final headerField = annotation.peek('headers')?.objectValue;
     final retryField = annotation.peek('retryOptions')?.objectValue;
@@ -48,10 +48,6 @@ class EndpointCollector {
     final cls = Class((cb) {
       cb.name = '_\$${element.displayName}Impl';
       cb.implements.add(refer(element.displayName));
-      if (_baseUrl != null) {
-        // const String _baseUrl = '';
-        cb.fields.add(_createField('String', '_baseUrl', "'$_baseUrl'"));
-      }
       if (_hasParameters) {
         // const String _parameters = {};
         cb.fields.add(_createField('Map<String, dynamic>', '_parameters',
@@ -102,17 +98,17 @@ class EndpointCollector {
         }
         DartObject? methodAnnotation = _getRequestMethodAnnotation(method);
         if (methodAnnotation != null) {
-          cb.methods.add(_createMethod(method, methodAnnotation));
+          cb.methods.add(_createMethod(method, methodAnnotation, baseUrl));
         } else {
           methodAnnotation = _multipartRequestChecker.firstAnnotationOf(method,
               throwOnUnresolved: false);
           if (methodAnnotation != null) {
-            cb.methods.add(_createMultipartMethod(method, methodAnnotation));
+            cb.methods.add(_createMultipartMethod(method, methodAnnotation, baseUrl));
           }
         }
       }
       // _encodeUrl
-      cb.methods.add(_encodeUrlMethod(_baseUrl != null));
+      cb.methods.add(_encodeUrlMethod());
     });
     final library = Library((lb) {
       lb.directives.add(Directive.partOf(fileName));
@@ -132,7 +128,7 @@ class EndpointCollector {
     });
   }
 
-  Method _createMethod(MethodElement method, DartObject annotation) {
+  Method _createMethod(MethodElement method, DartObject annotation, String? baseUrl) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -149,7 +145,7 @@ class EndpointCollector {
       final parser = _ParameterParser(
         requestMethod:
             annotation.type?.element?.displayName ?? RequestMethod.get.method,
-        requestPath: methodReader.read('path').stringValue,
+        requestPath: "${baseUrl ?? ''}${methodReader.read('path').stringValue}",
         headers: _parseHeaders(methodReader, isJsonRequest),
       );
       code.writeln(parser.parse(_addMethodParameters(method, mb)));
@@ -241,7 +237,7 @@ class EndpointCollector {
     });
   }
 
-  Method _createMultipartMethod(MethodElement method, DartObject annotation) {
+  Method _createMultipartMethod(MethodElement method, DartObject annotation, String? baseUrl) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -252,13 +248,14 @@ class EndpointCollector {
 
       final methodReader = ConstantReader(annotation);
       final methodTimeout = methodReader.peek('timeout')?.intValue;
-      final requestMethod = methodReader.read('method').read('_name').stringValue;
+      final requestMethod =
+          methodReader.read('method').read('_name').stringValue;
 
       StringBuffer code = StringBuffer();
       final parser = _ParameterParser(
         requestMethod:
             annotation.type?.element?.displayName ?? RequestMethod.get.method,
-        requestPath: methodReader.read('path').stringValue,
+        requestPath: "${baseUrl ?? ''}${methodReader.read('path').stringValue}",
         headers: _parseHeaders(methodReader),
       );
       code.writeln(parser.parse(_addMethodParameters(method, mb)));
@@ -285,7 +282,13 @@ class EndpointCollector {
       }
       // add file
       for (var part in parser.multiParts) {
-        code.writeln("request.files.add($part);");
+        if (part.isNullability) {
+          code.writeln('if (${part.name} != null) {');
+        }
+        code.writeln("request.files.add(${part.code});");
+        if (part.isNullability) {
+          code.writeln('}');
+        }
       }
       if (returnType != 'void') {
         code.write('final rawResponse = ');
@@ -314,7 +317,7 @@ class EndpointCollector {
     });
   }
 
-  Method _encodeUrlMethod(bool hasBaseUrl) {
+  Method _encodeUrlMethod() {
     return Method((mb) {
       mb.returns = refer('String');
       mb.name = '_encodeUrl';
@@ -327,20 +330,14 @@ class EndpointCollector {
         pb.name = 'queryParameters';
       }));
       mb.body = Code("""
-        String urlString = ${hasBaseUrl ? '_baseUrl' : '""'};
-        if (urlPath.startsWith('http') || urlPath.startsWith('https')) {
-          urlString = urlPath;
-        } else {
-          urlString += urlPath;
-        }
         if (queryParameters.isEmpty) {
-          return urlString;
+          return urlPath;
         }
         final queryString = queryParameters.entries.map((e) => '\${Uri.encodeQueryComponent(e.key)}=\${e.value is String ? Uri.encodeQueryComponent(e.value) : e.value}').join('&');
-        if (urlString.lastIndexOf('?') != -1) {
-          return '\$urlString&\$queryString';
+        if (urlPath.lastIndexOf('?') != -1) {
+          return '\$urlPath&\$queryString';
         }
-        return '\$urlString?\$queryString';""");
+        return '\$urlPath?\$queryString';""");
     });
   }
 
@@ -499,6 +496,7 @@ class EndpointCollector {
             key: paramObject.getField('name')?.toStringValue(),
             name: parameter.name,
             type: paramType,
+            isNullability: isNullability,
             isMultipart: true,
             filename: paramObject.getField('filename')?.toStringValue(),
             contentType: paramObject.getField('contentType')?.toStringValue(),
@@ -547,7 +545,7 @@ class _ParameterParser {
   final List<String> body = [];
   final List<String> customBody = [];
   final List<String> queryParameters = [];
-  final List<String> multiParts = [];
+  final List<_MultiPartNode> multiParts = [];
   final String requestMethod;
   final List<String> headers;
   String requestPath;
@@ -628,7 +626,8 @@ class _ParameterParser {
               "mime_type.lookupMimeType(${node.name}) ?? 'application/octet-stream'");
         }
         part.write('))');
-        multiParts.add(part.toString());
+        multiParts.add(
+            _MultiPartNode(node.isNullability, node.name, part.toString()));
       } else if (isNoBody) {
         queryParameters
             .add("$nullCheckExp'${node.key}': ${node.name}$defaultValueExp");
@@ -673,4 +672,12 @@ class _ApiParamNode {
       this.contentType})
       : key = key ?? name,
         isRequired = defaultValue == null ? isRequired : false;
+}
+
+class _MultiPartNode {
+  final bool isNullability;
+  final String name;
+  final String code;
+
+  const _MultiPartNode(this.isNullability, this.name, this.code);
 }

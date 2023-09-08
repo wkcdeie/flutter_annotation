@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -63,14 +64,14 @@ class JsonPersistence extends ConfigurePersistence {
   Future<void> flush() async {
     if (_runTask != null && _runTask!.isCompleted == false) {
       await _runTask!.future;
-    } else {
-      _runTask = Completer();
     }
+    _runTask = Completer();
     try {
       final args = [_cache, filePath, compress, encryptKey];
       await Isolate.run(() => _write(args));
       _runTask?.complete(true);
     } catch (e, st) {
+      log(e.toString(), stackTrace: st);
       _runTask?.completeError(e, st);
     }
   }

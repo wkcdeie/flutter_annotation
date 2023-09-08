@@ -30,13 +30,22 @@ class AnnotationClient extends BaseClient {
       newRequest = await chain!.onRequest(newRequest);
     }
     StreamedResponse response;
-    final task =
-        retryOptions != null ? _doRetryRequest(newRequest) : _inner.send(newRequest);
+    final task = retryOptions != null
+        ? _doRetryRequest(newRequest)
+        : _inner.send(newRequest);
     if (_inner.cancelToken != null) {
       _inner.cancelToken?.bind(task);
       response = await _inner.cancelToken!.result;
     } else {
       response = await task;
+    }
+    final hasOk = response.statusCode >= 200 && response.statusCode < 300;
+    if (!hasOk) {
+      throw ClientException(
+          response.reasonPhrase != null && response.reasonPhrase!.isNotEmpty
+              ? response.reasonPhrase!
+              : 'Http failed:${response.statusCode}',
+          newRequest.url);
     }
     Response newResponse = await Response.fromStream(response);
     if (chain != null) {
