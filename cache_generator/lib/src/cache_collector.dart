@@ -110,7 +110,12 @@ class CacheCollector {
               mb.optionalParameters.add(p);
             }
           }
-          final args = method.parameters.map((e) => e.displayName).join(',');
+          final args = method.parameters.map((e) {
+            if (e.isNamed) {
+              return '${e.displayName}:${e.displayName}';
+            }
+            return e.displayName;
+          }).join(',');
           final statement = "${isFuture ? 'await ' : ''}super.${method.displayName}(${args});";
           StringBuffer code = StringBuffer();
           if (condition != null) {

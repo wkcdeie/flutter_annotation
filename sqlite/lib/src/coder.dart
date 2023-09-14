@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 abstract class FieldCoder<T, R> {
   R encode(T? value);
@@ -15,6 +16,7 @@ class FieldCoderRegistry {
     'Map': _MapCoder(),
     'Duration': _DurationCoder(),
     'BigInt': _BigIntCoder(),
+    'Uint8List': _Uint8ListCoder(),
   };
 
   static FieldCoder? get(String type) {
@@ -120,5 +122,20 @@ class _BigIntCoder extends FieldCoder<BigInt, String> {
   @override
   String encode(BigInt? value) {
     return value?.toString() ?? '0';
+  }
+}
+
+class _Uint8ListCoder extends FieldCoder<Uint8List, Object> {
+  @override
+  Uint8List decode(Object value) {
+    if (value is List) {
+      return Uint8List.fromList(value as List<int>);
+    }
+    return Uint8List(0);
+  }
+
+  @override
+  Object encode(Uint8List? value) {
+    return value?.toList(growable: false) ?? List<int>.empty();
   }
 }

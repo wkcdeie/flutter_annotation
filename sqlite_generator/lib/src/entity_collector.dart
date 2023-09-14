@@ -93,12 +93,12 @@ class EntityCollector {
       return 'INTEGER';
     } else if (type.isDartCoreDouble || type.isDartCoreNum) {
       return 'REAL';
-    }/* else if (type.isDartCoreIterable ||
-        type.isDartCoreList ||
-        type.isDartCoreMap ||
-        type.isDartCoreSet) {
-      return 'BLOB';
-    }*/
+    } else {
+      final columnType = type.getDisplayString(withNullability: false);
+      if (columnType == 'Uint8List') {
+        return 'BLOB';
+      }
+    }
     return 'TEXT';
   }
 }

@@ -519,10 +519,10 @@ class RepositoryCollector {
       if (!column.isPrimaryKey && (!isUpdate || !column.isUniqueKey)) {
         stmt.write("'${column.columnName}': ");
         final key = 'entity.${column.fieldName}';
-        if (column.isNullability) {
+        String dataType = fc.TypeSplitter.nonnullType(column.fieldType);
+        if (column.isNullability && !_isBasicType(dataType)) {
           stmt.write('$key == null ? null:');
         }
-        String dataType = fc.TypeSplitter.nonnullType(column.fieldType);
         if (fc.TypeChecker.isListType(dataType)) {
           dataType = 'List';
         } else if (fc.TypeChecker.isMapType(dataType)) {
@@ -530,7 +530,7 @@ class RepositoryCollector {
         } else if (fc.TypeChecker.isSetType(dataType)) {
           dataType = 'Set';
         }
-        if (dataType == 'String' || dataType == 'int' || dataType == 'double') {
+        if (_isBasicType(dataType)) {
           stmt.write('$key');
         } else if (dataType == 'num') {
           stmt.write('$key${column.isNullability ? '?' : ''}.toDouble()');

@@ -29,6 +29,7 @@ class EndpointCollector {
   bool _hasHeaders = false;
   bool _hasParameters = false;
   bool _hasRetry = false;
+
   // String? _baseUrl;
   int? _timeout;
 
@@ -103,7 +104,8 @@ class EndpointCollector {
           methodAnnotation = _multipartRequestChecker.firstAnnotationOf(method,
               throwOnUnresolved: false);
           if (methodAnnotation != null) {
-            cb.methods.add(_createMultipartMethod(method, methodAnnotation, baseUrl));
+            cb.methods
+                .add(_createMultipartMethod(method, methodAnnotation, baseUrl));
           }
         }
       }
@@ -128,7 +130,8 @@ class EndpointCollector {
     });
   }
 
-  Method _createMethod(MethodElement method, DartObject annotation, String? baseUrl) {
+  Method _createMethod(
+      MethodElement method, DartObject annotation, String? baseUrl) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -237,7 +240,8 @@ class EndpointCollector {
     });
   }
 
-  Method _createMultipartMethod(MethodElement method, DartObject annotation, String? baseUrl) {
+  Method _createMultipartMethod(
+      MethodElement method, DartObject annotation, String? baseUrl) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -379,7 +383,8 @@ class EndpointCollector {
         code.writeln(
             'if (responseData is Map) {return $nonnullReturnType.fromJson(Map<String, dynamic>.from(responseData));}');
       } else if (fac.TypeChecker.isListType(nonnullReturnType)) {
-        final genericType = fac.TypeSplitter.genericType(nonnullReturnType) ?? nonnullReturnType;
+        final genericType = fac.TypeSplitter.genericType(nonnullReturnType) ??
+            nonnullReturnType;
         code.writeln('if (responseData is List) {');
         if (fac.TypeChecker.isCustomClass(genericType)) {
           code.writeln(
@@ -548,7 +553,9 @@ class _ParameterParser {
   String requestPath;
   String? _cancelTokenName;
 
-  bool get isNoBody => requestMethod == RequestMethod.get.method;
+  bool get isNoBody =>
+      requestMethod == RequestMethod.get.method ||
+      requestMethod == RequestMethod.head.method;
 
   String? get cancelTokenName => _cancelTokenName;
 

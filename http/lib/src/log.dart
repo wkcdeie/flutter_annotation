@@ -172,7 +172,8 @@ class PrintLoggingMiddleware implements HttpMiddleware {
         if (response.bodyBytes.length > 1024 * 128) {
           msg.writeln(
               'The response content exceeds 128kb and the output is ignored.');
-        } else {
+        } else if (response.headers[HttpHeaders.contentTypeHeader] !=
+            'application/octet-stream') {
           msg.writeln(response.body);
         }
       }
