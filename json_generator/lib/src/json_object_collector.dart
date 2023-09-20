@@ -54,7 +54,8 @@ class JsonObjectCollector {
       lb.body.add(Method(
           (mb) => _fromJson(mb, fromJsonMethodName, className, annotation)));
       if (enableToJsonMethod || enableToJsonStringMethod) {
-        lb.body.add(Method((mb) => _toJson(mb, className)));
+        final outputNull = annotation.read('outputNull').boolValue;
+        lb.body.add(Method((mb) => _toJson(mb, className, outputNull)));
       }
       if (enableToJsonStringMethod) {
         lb.body.add(Method((mb) => _toJsonString(mb, className)));
@@ -171,7 +172,7 @@ class JsonObjectCollector {
     builder.body = Code(code.toString());
   }
 
-  void _toJson(MethodBuilder builder, String className) {
+  void _toJson(MethodBuilder builder, String className, bool outputNull) {
     builder.returns = refer('Map<String, dynamic>');
     builder.name = '_\$${className}ToJson';
     builder.requiredParameters.add(Parameter((pb) {
@@ -183,6 +184,9 @@ class JsonObjectCollector {
       String key = "'${field.jsonKey}'";
       String value = "that.${field.fieldName}";
       String valueSuffix = field.hasNullSuffix ? '?' : '';
+      if (field.hasNullSuffix && !outputNull) {
+        code.write('if ($value != null)');
+      }
       if (field.encoder != null) {
         code.writeln("$key: ${field.encoder}.call($value),");
       } else if (field.typeName == 'DateTime') {

@@ -6,6 +6,7 @@ import 'dart:isolate';
 
 import 'package:flutter_annotation_common/flutter_annotation_common.dart'
     show SM4Crypto;
+import 'package:synchronized/synchronized.dart';
 
 import 'persistence.dart';
 
@@ -19,21 +20,19 @@ class JsonPersistence extends ConfigurePersistence {
   final String? encryptKey;
 
   final Map<String, dynamic> _cache = {};
-  Completer<bool>? _runTask;
+  final Lock _lock = Lock();
 
   JsonPersistence(this.filePath, {this.compress = true, this.encryptKey});
 
   @override
   void clear() {
-    final store = File(filePath);
-    store.exists().then((value) {
-      if (value) {
-        store.delete().then((_) {
-          _cache.clear();
-        });
-      } else {
-        _cache.clear();
+    _lock.synchronized(() async {
+      final store = File(filePath);
+      final ret = await store.exists();
+      if (ret) {
+        await store.delete();
       }
+      _cache.clear();
     });
   }
 
@@ -61,19 +60,11 @@ class JsonPersistence extends ConfigurePersistence {
     _cache.addAll(result);
   }
 
-  Future<void> flush() async {
-    if (_runTask != null && _runTask!.isCompleted == false) {
-      await _runTask!.future;
-    }
-    _runTask = Completer();
-    try {
+  Future<void> flush() {
+    return _lock.synchronized(() {
       final args = [_cache, filePath, compress, encryptKey];
-      await Isolate.run(() => _write(args));
-      _runTask?.complete(true);
-    } catch (e, st) {
-      log(e.toString(), stackTrace: st);
-      _runTask?.completeError(e, st);
-    }
+      return Isolate.run(() => _write(args));
+    }).catchError((e, st) => log(e.toString(), stackTrace: st));
   }
 }
 
@@ -83,15 +74,15 @@ Map<String, dynamic> _read(List args) {
     return {};
   }
   List<int> jsonData = file.readAsBytesSync();
-  final isCompress = args[1] as bool;
-  if (isCompress) {
-    jsonData = gzip.decode(jsonData);
-  }
   final encryptKey = args[2] as String?;
   if (encryptKey != null) {
     final crypto = SM4Crypto();
     crypto.setKey(encryptKey);
     jsonData = crypto.decrypt(jsonData);
+  }
+  final isCompress = args[1] as bool;
+  if (isCompress) {
+    jsonData = gzip.decode(jsonData);
   }
   final jsonString = utf8.decode(jsonData);
   if (jsonString.isEmpty) {
