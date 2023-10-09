@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:http/http.dart';
 
@@ -167,14 +168,21 @@ class PrintLoggingMiddleware implements HttpMiddleware {
               '${HttpHeaders.contentLengthHeader}:${response.contentLength}');
         }
       }
-      if (_logBody && response.body.isNotEmpty) {
+      if (_logBody && response.bodyBytes.isNotEmpty) {
         msg.writeln();
         if (response.bodyBytes.length > 1024 * 128) {
           msg.writeln(
               'The response content exceeds 128kb and the output is ignored.');
-        } else if (response.headers[HttpHeaders.contentTypeHeader] !=
-            'application/octet-stream') {
-          msg.writeln(response.body);
+        } else {
+          final checkBytes = response.bodyBytes.length > 1024
+              ? response.bodyBytes.sublist(0, 1024)
+              : response.bodyBytes;
+          if (_isPlainText(checkBytes)) {
+            msg.writeln(response.body);
+          } else {
+            msg.writeln(
+                'Non-plain text data: ${response.headers[HttpHeaders.contentTypeHeader]}');
+          }
         }
       }
       if (_logBody || _logHeader) {
@@ -183,5 +191,21 @@ class PrintLoggingMiddleware implements HttpMiddleware {
       log(msg.toString(), level: logLevel, name: 'HTTP');
     }
     return Future.value(response);
+  }
+
+  bool _isPlainText(Uint8List source) {
+    int whiteListCharCount = 0;
+    for (int i = 0; i < source.length; i++) {
+      int byte = source[i];
+      if (byte == 9 ||
+          byte == 10 ||
+          byte == 13 ||
+          (byte >= 32 && byte <= 255)) {
+        whiteListCharCount++;
+      } else if (byte <= 6 || (byte >= 14 && byte <= 31)) {
+        return false;
+      }
+    }
+    return whiteListCharCount >= 1;
   }
 }
