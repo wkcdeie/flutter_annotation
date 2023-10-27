@@ -7,10 +7,10 @@
 part of 'database.dart';
 
 class _$AppDatabase extends AppDatabase {
-  scf.Database? _database;
+  sqflite.Database? _database;
 
   @override
-  scf.Database get database {
+  sqflite.Database get database {
     if (_database == null) {
       throw StateError(
           'The database instance is not initialized or has been shut down, call the open method to reopen.');
@@ -24,13 +24,14 @@ class _$AppDatabase extends AppDatabase {
     bool inMemory = false,
   }) async {
     await close();
-    final factory = sc.SqfliteDatabaseFactoryLogger(scf.databaseFactoryFfi,
+    final factory = sc.SqfliteDatabaseFactoryLogger(
+        sqflite.databaseFactorySqflitePlugin,
         options: sc.SqfliteLoggerOptions(
             log: _printSqlLog,
             type: sc.SqfliteDatabaseFactoryLoggerType.invoke));
     _database = await factory.openDatabase(
-      inMemory ? scf.inMemoryDatabasePath : dbPath,
-      options: scf.OpenDatabaseOptions(
+      inMemory ? sqflite.inMemoryDatabasePath : dbPath,
+      options: sqflite.OpenDatabaseOptions(
         version: 1,
         onCreate: (db, version) async {
           await _addTable(db, 'tb_person', [
@@ -74,7 +75,7 @@ class _$AppDatabase extends AppDatabase {
   }
 
   Future<void> _addTable(
-    scf.Database db,
+    sqflite.Database db,
     String table,
     List<String> columns,
   ) {
@@ -83,7 +84,7 @@ class _$AppDatabase extends AppDatabase {
   }
 
   Future<void> _addIndex(
-    scf.Database db,
+    sqflite.Database db,
     String table,
     List<String> columns, [
     bool isUnique = false,

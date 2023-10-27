@@ -1,4 +1,4 @@
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' show ConflictAlgorithm;
+import 'package:sqflite_common/sqlite_api.dart' show ConflictAlgorithm;
 
 /// Represents a DAO access object
 class Repository {

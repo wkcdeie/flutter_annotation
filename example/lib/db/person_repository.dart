@@ -1,14 +1,12 @@
-import 'dart:convert';
-
 import 'package:flutter_annotation_sqlite/flutter_annotation_sqlite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as scf;
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'person.dart';
 
 part 'person_repository.dao.dart';
 
 @Repository(Person)
 abstract class PersonRepository {
-  static PersonRepository create(scf.Database database) =>
+  static PersonRepository create(sqflite.Database database) =>
       _$PersonRepository(database);
 
   @Query()
@@ -41,16 +39,17 @@ abstract class PersonRepository {
   @Query(fields: ['birthday'])
   Future<List<DateTime>> findBirthdays(bool isVip);
 
-  @Query(fields: ['id', 'name', 'age', 'height', 'isVip', 'address', 'birthday'])
+  @Query(
+      fields: ['id', 'name', 'age', 'height', 'isVip', 'address', 'birthday'])
   Future<List<Map<String, dynamic>>> findValues([String? likeName]);
 
-  @Insert(scf.ConflictAlgorithm.abort)
+  @Insert(sqflite.ConflictAlgorithm.abort)
   Future<void> insert(Person entity);
 
   @Update()
   Future<void> updateById(Person entity, int id);
 
-  @Update(conflict: scf.ConflictAlgorithm.replace, ignoreNull: true)
+  @Update(conflict: sqflite.ConflictAlgorithm.replace, ignoreNull: true)
   Future<void> updateAll(Person entity);
 
   @Delete()

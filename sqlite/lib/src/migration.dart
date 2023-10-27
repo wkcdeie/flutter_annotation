@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' show Database;
+import 'package:sqflite_common/sqlite_api.dart' show Database;
 
 /// Base class for a database migration.
 abstract class Migrator {

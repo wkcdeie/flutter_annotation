@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_annotation_sqlite/flutter_annotation_sqlite.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' as scf;
+import 'package:sqflite/sqflite.dart' as sqflite;
 import 'package:sqflite_common/sqflite_logger.dart' as sc;
 import 'person.dart';
 
@@ -14,7 +14,7 @@ part 'database.db.dart';
   migrations: [V2Migrator],
 )
 abstract class AppDatabase {
-  scf.Database get database;
+  sqflite.Database get database;
 
   Future<void> open(String dbPath, {bool inMemory = false});
 
@@ -25,7 +25,7 @@ abstract class AppDatabase {
 
 class V2Migrator extends Migrator {
   @override
-  FutureOr<void> onMigration(scf.Database db) {
+  FutureOr<void> onMigration(sqflite.Database db) {
     // TODO: implement onMigration
     throw UnimplementedError();
   }

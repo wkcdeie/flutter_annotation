@@ -30,8 +30,8 @@ Map<String, dynamic> _$UserInfoToJson(UserInfo that) {
     'lastLogin': that.lastLogin.millisecondsSinceEpoch,
     'photos': that.photos,
     'level': that.level.value,
-    'bio': that.bio,
-    'addressInfo': that.addressInfo?.toJson(),
+    if (that.bio != null) 'bio': that.bio,
+    if (that.addressInfo != null) 'addressInfo': that.addressInfo?.toJson(),
     'session': durationEncode.call(that.session),
   };
 }

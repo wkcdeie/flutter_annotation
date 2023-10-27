@@ -9,7 +9,7 @@ part of 'person_repository.dart';
 class _$PersonRepository extends PersonRepository {
   _$PersonRepository(this._database);
 
-  final scf.Database _database;
+  final sqflite.Database _database;
 
   final String _table = 'tb_person';
 
@@ -293,7 +293,7 @@ class _$PersonRepository extends PersonRepository {
           : FieldCoderRegistry.get('DateTime')?.encode(entity.birthday),
     };
     await _database.insert(_table, values,
-        conflictAlgorithm: scf.ConflictAlgorithm.abort);
+        conflictAlgorithm: sqflite.ConflictAlgorithm.abort);
   }
 
   @override
@@ -336,7 +336,7 @@ class _$PersonRepository extends PersonRepository {
     };
     values.removeWhere((key, value) => value == null);
     await _database.update(_table, values,
-        conflictAlgorithm: scf.ConflictAlgorithm.replace);
+        conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
   }
 
   @override

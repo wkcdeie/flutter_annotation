@@ -10,7 +10,7 @@ import 'package:collection/collection.dart';
 import 'entity_collector.dart';
 
 class RepositoryCollector {
-  final _sqlitePrefix = 'scf';
+  final _sqlitePrefix = 'sqflite';
   final _entityChecker = TypeChecker.fromRuntime(Entity);
   final _queryChecker = TypeChecker.fromRuntime(Query);
   final _insertChecker = TypeChecker.fromRuntime(Insert);

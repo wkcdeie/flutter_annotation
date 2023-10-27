@@ -6,7 +6,7 @@ import 'package:source_gen/source_gen.dart';
 import 'entity_collector.dart';
 
 class DatabaseCollector {
-  final sqlitePrefix = 'scf';
+  final sqlitePrefix = 'sqflite';
   final _entityChecker = TypeChecker.fromRuntime(Entity);
 
   String collect(String fileName, ClassElement element,
@@ -157,17 +157,15 @@ class DatabaseCollector {
       mb.modifier = MethodModifier.async;
       StringBuffer code = StringBuffer();
       code.writeln('await close();');
-      String factoryName = '$sqlitePrefix.databaseFactoryFfi';
       if (showSql) {
         code.writeln('final factory = sc.SqfliteDatabaseFactoryLogger(');
-        code.writeln('$factoryName,');
+        code.writeln('$sqlitePrefix.databaseFactorySqflitePlugin,');
         code.writeln('options: sc.SqfliteLoggerOptions(log: _printSqlLog, type: sc.SqfliteDatabaseFactoryLoggerType.invoke));');
-        factoryName = 'factory';
       }
       code.write(
-          '_database = await $factoryName.openDatabase(');
-      code.writeln('inMemory ? scf.inMemoryDatabasePath : dbPath,');
-      code.write('options: scf.OpenDatabaseOptions(');
+          '_database = await factory.openDatabase(');
+      code.writeln('inMemory ? $sqlitePrefix.inMemoryDatabasePath : dbPath,');
+      code.write('options: $sqlitePrefix.OpenDatabaseOptions(');
       code.write('version: $dbVersion,');
       code.write('onCreate: (db, version) async {');
       for (var element in entities) {
