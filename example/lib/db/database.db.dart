@@ -24,12 +24,7 @@ class _$AppDatabase extends AppDatabase {
     bool inMemory = false,
   }) async {
     await close();
-    final factory = sc.SqfliteDatabaseFactoryLogger(
-        sqflite.databaseFactorySqflitePlugin,
-        options: sc.SqfliteLoggerOptions(
-            log: _printSqlLog,
-            type: sc.SqfliteDatabaseFactoryLoggerType.invoke));
-    _database = await factory.openDatabase(
+    _database = await sqliteFactory.openDatabase(
       inMemory ? sqflite.inMemoryDatabasePath : dbPath,
       options: sqflite.OpenDatabaseOptions(
         version: 1,
@@ -72,6 +67,7 @@ class _$AppDatabase extends AppDatabase {
   @override
   Future<void> close() async {
     _database?.close();
+    _database = null;
   }
 
   Future<void> _addTable(
@@ -91,21 +87,5 @@ class _$AppDatabase extends AppDatabase {
   ]) {
     return db.execute(
         'CREATE ${isUnique ? 'UNIQUE' : ''} INDEX IF NOT EXISTS ${table}_${columns.join('_')} ON $table(${columns.join(',')})');
-  }
-
-  void _printSqlLog(sc.SqfliteLoggerEvent event) {
-    final obj = event as sc.SqfliteLoggerInvokeEvent;
-    final args = obj.arguments as Map?;
-    if (args != null && args['sql'] != null) {
-      StringBuffer log = StringBuffer('SQL:');
-      log.write('[${args['sql']}]');
-      if (args['arguments'] != null) {
-        log.write(' arguments:${args['arguments']}');
-      }
-      if (obj.sw != null) {
-        log.write(' time:${obj.sw!.elapsedMicroseconds / 1000.0}ms');
-      }
-      print(log.toString());
-    }
   }
 }

@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_annotation_sqlite/flutter_annotation_sqlite.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
-import 'package:sqflite_common/sqflite_logger.dart' as sc;
 import 'person.dart';
 
 part 'database.db.dart';
 
 @Database(
-  showSql: kDebugMode,
   entities: [Person, Address],
   migrations: [V2Migrator],
 )
@@ -21,6 +19,13 @@ abstract class AppDatabase {
   Future<void> close();
 
   static AppDatabase create() => _$AppDatabase();
+
+  sqflite.DatabaseFactory get sqliteFactory {
+    if (kReleaseMode) {
+      return sqflite.databaseFactorySqflitePlugin;
+    }
+    return sqlLoggerFactory(sqflite.databaseFactorySqflitePlugin);
+  }
 }
 
 class V2Migrator extends Migrator {

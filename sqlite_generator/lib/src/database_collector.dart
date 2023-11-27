@@ -9,31 +9,20 @@ class DatabaseCollector {
   final sqlitePrefix = 'sqflite';
   final _entityChecker = TypeChecker.fromRuntime(Entity);
 
-  String collect(String fileName, ClassElement element,
-      ConstantReader annotation) {
+  String collect(
+      String fileName, ClassElement element, ConstantReader annotation) {
     final emitter = DartEmitter();
     final formatter = DartFormatter();
-    final dbVersion = annotation
-        .read('version')
-        .intValue;
-    final showSql = annotation
-        .read('showSql')
-        .boolValue;
+    final dbVersion = annotation.read('version').intValue;
     final entities = annotation
         .read('entities')
         .listValue
-        .map((e) =>
-    e
-        .toTypeValue()
-        ?.element)
+        .map((e) => e.toTypeValue()?.element)
         .whereType<ClassElement>();
     final migrations = annotation
         .read('migrations')
         .listValue
-        .map((e) =>
-    e
-        .toTypeValue()
-        ?.element)
+        .map((e) => e.toTypeValue()?.element)
         .whereType<ClassElement>();
     final cls = Class((cb) {
       cb.name = '_\$${element.displayName}';
@@ -52,14 +41,14 @@ class DatabaseCollector {
             "if (_database == null) {throw StateError('The database instance is not initialized or has been shut down, call the open method to reopen.');}return _database!;");
       }));
       // open
-      cb.methods.add(_addOpenMethod(dbVersion, showSql, entities, migrations));
+      cb.methods.add(_addOpenMethod(dbVersion, entities, migrations));
       // close
       cb.methods.add(Method((mb) {
         mb.annotations.add(refer('override'));
         mb.returns = refer('Future<void>');
         mb.name = 'close';
         mb.modifier = MethodModifier.async;
-        mb.body = Code('_database?.close();');
+        mb.body = Code('_database?.close();\n_database = null;');
       }));
       // _addTable
       cb.methods.add(Method((mb) {
@@ -104,31 +93,6 @@ class DatabaseCollector {
         mb.body = Code(
             "return db.execute('CREATE \${isUnique?'UNIQUE':''} INDEX IF NOT EXISTS \${table}_\${columns.join('_')} ON \$table(\${columns.join(',')})');");
       }));
-      // _printSqlLog
-      if (showSql) {
-        cb.methods.add(Method((mb){
-          mb.returns = refer('void');
-          mb.name = '_printSqlLog';
-          mb.requiredParameters.add(Parameter((pb){
-            pb.type = refer('sc.SqfliteLoggerEvent');
-            pb.name = 'event';
-          }));
-          mb.body = Code(r"""
-          final obj = event as sc.SqfliteLoggerInvokeEvent;
-          final args = obj.arguments as Map?;
-          if (args != null && args['sql'] != null) {
-          StringBuffer log = StringBuffer('SQL:');
-          log.write('[${args['sql']}]');
-          if (args['arguments'] != null) {
-            log.write(' arguments:${args['arguments']}');
-          }
-          if (obj.sw != null) {
-            log.write(' time:${obj.sw!.elapsedMicroseconds / 1000.0}ms');
-          }
-          print(log.toString());
-          }""");
-        }));
-      }
     });
     final lib = Library((lb) {
       lb.directives.add(Directive.partOf(fileName));
@@ -137,8 +101,7 @@ class DatabaseCollector {
     return formatter.format('${lib.accept(emitter)}');
   }
 
-  Method _addOpenMethod(int dbVersion, bool showSql,
-      Iterable<ClassElement> entities,
+  Method _addOpenMethod(int dbVersion, Iterable<ClassElement> entities,
       Iterable<ClassElement> migrations) {
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -157,41 +120,32 @@ class DatabaseCollector {
       mb.modifier = MethodModifier.async;
       StringBuffer code = StringBuffer();
       code.writeln('await close();');
-      if (showSql) {
-        code.writeln('final factory = sc.SqfliteDatabaseFactoryLogger(');
-        code.writeln('$sqlitePrefix.databaseFactorySqflitePlugin,');
-        code.writeln('options: sc.SqfliteLoggerOptions(log: _printSqlLog, type: sc.SqfliteDatabaseFactoryLoggerType.invoke));');
-      }
-      code.write(
-          '_database = await factory.openDatabase(');
+      code.write('_database = await sqliteFactory.openDatabase(');
       code.writeln('inMemory ? $sqlitePrefix.inMemoryDatabasePath : dbPath,');
       code.write('options: $sqlitePrefix.OpenDatabaseOptions(');
       code.write('version: $dbVersion,');
       code.write('onCreate: (db, version) async {');
       for (var element in entities) {
         final annotation =
-        _entityChecker.firstAnnotationOf(element, throwOnUnresolved: false);
+            _entityChecker.firstAnnotationOf(element, throwOnUnresolved: false);
         if (annotation == null) {
           continue;
         }
         final collector = EntityCollector();
         collector.collect(element, ConstantReader(annotation));
         code.writeln(
-            "await _addTable(db, '${collector.table}', [${collector.columns
-                .map((e) => "'${e.sql}'").join(',')}");
+            "await _addTable(db, '${collector.table}', [${collector.columns.map((e) => "'${e.sql}'").join(',')}");
         if (collector.primaryKeys.isNotEmpty) {
           code.write(",'PRIMARY KEY(${collector.primaryKeys.join(',')})'");
         }
         code.write(']);');
         for (var keys in collector.uniqueKeys) {
           code.write(
-              "await _addIndex(db, '${collector.table}', [${keys.join(
-                  ',')}], true);");
+              "await _addIndex(db, '${collector.table}', [${keys.join(',')}], true);");
         }
         if (collector.columnIndexes.isNotEmpty) {
           code.write(
-              "await _addIndex(db, '${collector.table}', [${collector
-                  .columnIndexes.map((e) => "'${e}'").join(',')}]);");
+              "await _addIndex(db, '${collector.table}', [${collector.columnIndexes.map((e) => "'${e}'").join(',')}]);");
         }
       }
       code.write('},');
