@@ -5,20 +5,20 @@
 // **************************************************************************
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_annotation_router/flutter_annotation_router.dart';
+import 'router.navigate.dart';
 import 'package:example/page/home.dart';
 import 'package:example/page/first_page.dart';
 import 'package:example/page/second_page.dart';
 import 'package:example/route/log.dart';
 
 final _routes = {
-  '/': (settings) => MaterialPageRoute(
+  NavigateHelper.MyHomePageRoute: (settings) => MaterialPageRoute(
       settings: settings,
       builder: (ctx) {
         return const MyHomePage();
       }),
-  '/first': (settings) => MaterialPageRoute(
+  NavigateHelper.FirstRoute: (settings) => MaterialPageRoute(
       settings: settings,
       builder: (ctx) {
         final args = Map<String, dynamic>.from(settings.arguments as Map);
@@ -33,7 +33,7 @@ final _routes = {
             isModal: args['isModal'] ?? true,
             age: args['age']);
       }),
-  '/second': (settings) => MaterialPageRoute(
+  NavigateHelper.SecondPageRoute: (settings) => MaterialPageRoute(
       settings: settings,
       builder: (ctx) {
         final args = Map<String, dynamic>.from(settings.arguments as Map);
@@ -60,4 +60,18 @@ Route<dynamic>? getRoute(
 void setupGuards() {
   final chain = RouteChain.withInitialRoute('/');
   chain.add('/*', RouteLoggingListener.withLog());
+}
+
+class FixNavigatorWithPop extends NavigatorObserver {
+  @override
+  void didPop(
+    Route route,
+    Route? previousRoute,
+  ) {
+    final name = route.settings.name;
+    if (name != null && RouteChain.shared.routes.contains(name)) {
+      RouteChain.shared.pop();
+    }
+    super.didPop(route, previousRoute);
+  }
 }

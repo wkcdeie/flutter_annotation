@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter_annotation_sqlite/flutter_annotation_sqlite.dart';
 import 'package:sqflite/sqflite.dart' as sqflite;
 import 'person.dart';
 
 part 'person_repository.dao.dart';
 
-@Repository(Person)
+@Repository(Person, _PersonCoder)
 abstract class PersonRepository {
-  static PersonRepository create(sqflite.Database database) =>
-      _$PersonRepository(database);
+  static PersonRepository create(sqflite.Database database) {
+    FieldCoderRegistry.register('Address', _AddressCoder());
+    return _$PersonRepository(database);
+  }
 
   @Query()
   Future<List<Person>> findEntities(int page,
@@ -27,6 +31,9 @@ abstract class PersonRepository {
 
   @Query(fields: ['birthday'])
   Future<DateTime> findBirthdayByName(String name);
+
+  @Query(fields: ['address'])
+  Future<Address?> findAddressByName(String name);
 
   @Query(fields: [
     'name'
@@ -57,4 +64,48 @@ abstract class PersonRepository {
 
   @Delete()
   Future<bool> deleteByAge(int age, {double? orHeight});
+}
+
+class _PersonCoder extends FieldCoder<Person, String> {
+  @override
+  String encode(Person? value) {
+    if (value == null) {
+      return '{}';
+    }
+    return jsonEncode(value.toJson());
+  }
+
+  @override
+  Person decode(Object value) {
+    print('Person map:$value');
+    Map<String, dynamic> jsonObject = {};
+    if (value is String) {
+      jsonObject = jsonDecode(value);
+    } else if (value is Map) {
+      jsonObject = Map<String, dynamic>.from(value);
+    }
+    return Person.fromJson(jsonObject);
+  }
+}
+
+class _AddressCoder extends FieldCoder<Address, String> {
+  @override
+  Address decode(Object value) {
+    print('Address map:$value');
+    Map<String, dynamic> jsonObject = {};
+    if (value is String) {
+      jsonObject = jsonDecode(value);
+    } else if (value is Map) {
+      jsonObject = Map<String, dynamic>.from(value);
+    }
+    return Address.fromJson(jsonObject);
+  }
+
+  @override
+  String encode(Address? value) {
+    if (value == null) {
+      return '{}';
+    }
+    return jsonEncode(value.toJson());
+  }
 }

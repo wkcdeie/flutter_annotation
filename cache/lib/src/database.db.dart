@@ -6,7 +6,7 @@
 
 part of 'database.dart';
 
-class _$AppDatabase extends AppDatabase {
+class _$_AbstractCacheDatabase extends _AbstractCacheDatabase {
   sqflite.Database? _database;
 
   @override
@@ -29,31 +29,17 @@ class _$AppDatabase extends AppDatabase {
       options: sqflite.OpenDatabaseOptions(
         version: 1,
         onCreate: (db, version) async {
-          await SqlHelper.createTable(db, 'tb_person', [
-            'id INTEGER PRIMARY KEY AUTOINCREMENT',
-            'name TEXT UNIQUE',
-            'age INTEGER NOT NULL',
-            'height REAL NOT NULL',
-            'is_vip INTEGER NOT NULL',
-            'address TEXT',
-            'birthday TEXT'
-          ]);
-          await SqlHelper.createIndex(db, 'tb_person', ['is_vip']);
-          await SqlHelper.createTable(db, 'Address', [
-            'province TEXT NOT NULL',
-            'city TEXT NOT NULL',
-            'area TEXT NOT NULL',
-            'detail TEXT'
-          ], primaryKeys: [
-            'province',
-            'city',
-            'area'
+          await SqlHelper.createTable(db, 'fa_cache_data', [
+            'key TEXT UNIQUE',
+            'size INTEGER NOT NULL',
+            'expire_date INTEGER',
+            'file_path TEXT',
+            'data BLOB'
           ]);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
-          final migrations = [
-            V2Migrator(),
-          ].where((element) => element.fromVersion >= oldVersion).toList();
+          final migrations =
+              [].where((element) => element.fromVersion >= oldVersion).toList();
           migrations.sort((a, b) => a.fromVersion.compareTo(b.fromVersion));
           if (migrations.isEmpty || migrations.last.toVersion != newVersion) {
             throw StateError(

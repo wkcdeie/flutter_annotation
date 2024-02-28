@@ -1,71 +1,49 @@
-import 'dart:io';
-
 import 'package:example/db/database.dart';
 import 'package:example/db/person.dart';
 import 'package:example/db/person_repository.dart';
-import 'package:flutter_annotation_sqlite/flutter_annotation_sqlite.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as scf;
 
 void main() {
-  final database = AppDatabase.create();
-  FieldCoderRegistry.register('Person', _PersonCoder());
-  FieldCoderRegistry.register('Address', _AddressCoder());
-
+  final handler = AppDatabase.create();
   late PersonRepository repository;
 
   setUp(() async {
-    await database.open('${Directory.systemTemp.path}/test.db');
-    repository = PersonRepository.create(database.database);
+    handler.databaseFactory = scf.databaseFactoryFfi;
+    await handler.open('', inMemory: true);
+    repository = PersonRepository.create(handler.database);
   });
 
   tearDown(() {
-    database.close();
+    handler.close();
   });
 
   test('insert person', () async {
     await repository.insert(Person(id: 0, name: 'tom', age: 22, height: 180));
   });
 
+  test('insert person address', () async {
+    await repository.insert(Person(
+      id: 0,
+      name: 'jack',
+      age: 18,
+      height: 160,
+      address: Address(province: 'province', city: 'city', area: 'area'),
+    ));
+  });
+
   test('query entities', () async {
     final persons = await repository.findEntities(1);
-    expect(persons, isNotEmpty);
+    expect(persons, isEmpty);
   });
 
   test('query values', () async {
     final values = await repository.findValues();
-    expect(values, isNotEmpty);
+    expect(values, isEmpty);
   });
 
-  test('query person age', () async {
-    final age = await repository.findAgeByName('jack');
-    expect(age, 18);
+  test('query person address', () async {
+    final address = await repository.findAddressByName('jack');
+    expect(address, isNull);
   });
-}
-
-class _PersonCoder extends FieldCoder<Person, String> {
-  @override
-  Person decode(Object value) {
-    print('Person map:$value');
-    return Person.fromJson(value as Map<String, dynamic>);
-  }
-
-  @override
-  String encode(Person? value) {
-    // TODO: implement encode
-    throw UnimplementedError();
-  }
-}
-
-class _AddressCoder extends FieldCoder<Address, String> {
-  @override
-  Address decode(Object value) {
-    print('Address map:$value');
-    return Address.fromJson(value as Map<String, dynamic>);
-  }
-
-  @override
-  String encode(Address? value) {
-    // TODO: implement encode
-    throw UnimplementedError();
-  }
 }

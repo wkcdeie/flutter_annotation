@@ -5,7 +5,10 @@ class Repository {
   /// Represents the object type of the operation
   final Type entity;
 
-  const Repository(this.entity);
+  /// A custom encoded class that represents an object
+  final Type? coder;
+
+  const Repository(this.entity, [this.coder]);
 }
 
 /// SQL: `ORDER BY` options

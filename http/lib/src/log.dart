@@ -14,31 +14,31 @@ class PrintCurlMiddleware implements HttpMiddleware {
   const PrintCurlMiddleware([this.logLevel = 0]);
 
   @override
-  Future<BaseRequest> onRequest(BaseRequest request) {
+  Future<RequestOptions> onRequest(RequestOptions options) {
     StringBuffer cmd = StringBuffer();
-    cmd.write('curl -X ${request.method.toUpperCase()} ');
-    if (request.headers.isNotEmpty) {
-      request.headers.forEach((key, value) {
+    cmd.write('curl -X ${options.method.toUpperCase()} ');
+    if (options.headers.isNotEmpty) {
+      options.headers.forEach((key, value) {
         cmd.write('-H "$key: $value" ');
       });
     }
-    if (request is MultipartRequest) {
-      final multipartRequest = request;
-      for (var field in multipartRequest.fields.entries) {
+    if (options is MultipartRequestOptions) {
+      final multipartOptions = options;
+      for (var field in multipartOptions.fields.entries) {
         cmd.write('-f "${field.key}: ${field.value}" ');
       }
-      for (var file in multipartRequest.files) {
-        cmd.write('-f "${file.field}: ${file.filename ?? ''}" ');
+      for (var file in multipartOptions.files) {
+        cmd.write('-f "${file.field}: ${file.filename}" ');
       }
-    } else if (request is Request) {
-      if (request.body.isNotEmpty) {
-        cmd.write('-d "${request.body.replaceAll('"', '\\"')}" ');
+    } else if (options is FormRequestOptions) {
+      if (options.fields.isNotEmpty) {
+        cmd.write('-d "${options.bodyString.replaceAll('"', '\\"')}" ');
       }
     }
-    cmd.write('"${request.url}"');
+    cmd.write('"${options.url}"');
     cmd.writeln();
     log(cmd.toString(), level: logLevel, name: 'HTTP');
-    return Future.value(request);
+    return Future.value(options);
   }
 
   @override
@@ -113,43 +113,43 @@ class PrintLoggingMiddleware implements HttpMiddleware {
       [this.outputLogLevel = OutputLogLevel.body, this.logLevel = 0]);
 
   @override
-  Future<BaseRequest> onRequest(BaseRequest request) {
+  Future<RequestOptions> onRequest(RequestOptions options) {
     if (outputLogLevel != OutputLogLevel.none) {
       StringBuffer msg = StringBuffer();
-      msg.write('--> ${request.method} ${request.url}');
-      if (_logHeader && request.contentLength != null) {
-        msg.write(' (${request.contentLength}-byte body)');
+      msg.write('--> ${options.method} ${options.url}');
+      final contentLength = options.contentLength;
+      if (_logHeader && contentLength != null) {
+        msg.write(' ($contentLength-byte body)');
       }
       msg.write('\n');
       if (_logHeader) {
-        request.headers.forEach((key, value) {
+        options.headers.forEach((key, value) {
           msg.writeln('$key:$value');
         });
-        if (request.headers[HttpHeaders.contentLengthHeader] == null) {
-          msg.writeln(
-              '${HttpHeaders.contentLengthHeader}:${request.contentLength}');
+        if (contentLength != null) {
+          msg.writeln('${HttpHeaders.contentLengthHeader}:$contentLength');
         }
       }
       if (_logBody) {
         msg.writeln();
-        if (request is Request) {
-          msg.writeln(request.body);
-        } else if (request is MultipartRequest) {
-          request.fields.forEach((key, value) {
+        if (options is FormRequestOptions) {
+          msg.writeln(options.bodyString);
+        } else if (options is MultipartRequestOptions) {
+          options.fields.forEach((key, value) {
             msg.writeln('$key=$value');
           });
-          for (var file in request.files) {
+          for (var file in options.files) {
             msg.writeln(
                 '${file.field}=${file.filename}/${file.length}/${file.contentType}');
           }
         }
       }
       if (_logHeader || _logBody) {
-        msg.writeln('--> END ${request.method}');
+        msg.writeln('--> END ${options.method}');
       }
       log(msg.toString(), level: logLevel, name: 'HTTP');
     }
-    return Future.value(request);
+    return Future.value(options);
   }
 
   @override

@@ -14,7 +14,7 @@ class _$BookRepositoryWithCache extends BookRepository {
 
   final String _cacheName = 'Book';
 
-  final CacheStore cacheStore;
+  final AsyncCacheStore cacheStore;
 
   @override
   BookInfo saveBook(BookInfo bookInfo) {
@@ -24,7 +24,7 @@ class _$BookRepositoryWithCache extends BookRepository {
     }
     final cacheKey = '${bookInfo.id}';
     final result = super.saveBook(bookInfo);
-    cacheStore.put(_cacheName, cacheKey, result.toJson(),
+    cacheStore.asyncPut(_cacheName, cacheKey, result.toJson(),
         expires: DateTime.now().millisecondsSinceEpoch + 6000);
     return result;
   }
@@ -33,14 +33,14 @@ class _$BookRepositoryWithCache extends BookRepository {
   Future<BookInfo?> queryBook(String bookId) async {
     final cacheKey = '${bookId}';
     BookInfo? result;
-    final cacheObject = await cacheStore.get(_cacheName, cacheKey);
+    final cacheObject = await cacheStore.asyncGet(_cacheName, cacheKey);
     if (cacheObject != null) {
       result = BookInfo.fromJson(cacheObject as Map<String, dynamic>);
     }
     if (result == null) {
       result = await super.queryBook(bookId);
       if (result != null) {
-        cacheStore.put(_cacheName, cacheKey, result.toJson());
+        cacheStore.asyncPut(_cacheName, cacheKey, result.toJson());
       }
     }
     return result;
@@ -57,13 +57,13 @@ class _$BookRepositoryWithCache extends BookRepository {
   Future<List<BookInfo>> getBookList(int page) async {
     final cacheKey = 'list${page}';
     List<BookInfo>? result;
-    final cacheObject = await cacheStore.get(_cacheName, cacheKey);
+    final cacheObject = await cacheStore.asyncGet(_cacheName, cacheKey);
     if (cacheObject != null) {
       result = (cacheObject as List).map((e) => BookInfo.fromJson(e)).toList();
     }
     if (result == null) {
       result = await super.getBookList(page);
-      cacheStore.put(
+      cacheStore.asyncPut(
           _cacheName, cacheKey, result.map((e) => e.toJson()).toList());
     }
     return result;
@@ -73,14 +73,14 @@ class _$BookRepositoryWithCache extends BookRepository {
   Future<String?> getAuthor(String bookId) async {
     final cacheKey = 'author${bookId}';
     String? result;
-    final cacheObject = await cacheStore.get(_cacheName, cacheKey);
+    final cacheObject = await cacheStore.asyncGet(_cacheName, cacheKey);
     if (cacheObject != null) {
       result = cacheObject as String;
     }
     if (result == null) {
       result = await super.getAuthor(bookId);
       if (result != null) {
-        cacheStore.put(_cacheName, cacheKey, result);
+        cacheStore.asyncPut(_cacheName, cacheKey, result);
       }
     }
     return result;

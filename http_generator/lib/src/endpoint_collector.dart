@@ -168,16 +168,14 @@ class EndpointCollector {
       }
       code.writeln(
           "final urlString = _encodeUrl('${parser.requestPath}',${putQueryString ? 'queryParameters' : '{}'});");
-      final putBody = !parser.isNoBody &&
+      code.writeln(
+          "final options = FormRequestOptions('${parser.requestMethod}', Uri.parse(urlString));");
+      // add body
+      if (!parser.isNoBody &&
           (_hasParameters ||
               parser.body.isNotEmpty ||
-              parser.customBody.isNotEmpty);
-      if (putBody) {
-        code.write("final body =");
-        if (isJsonRequest) {
-          code.write('jsonEncode(');
-        }
-        code.write('{');
+              parser.customBody.isNotEmpty)) {
+        code.writeln('options.fields.addAll({');
         if (_hasParameters) {
           code.writeln('..._parameters,');
         }
@@ -189,38 +187,24 @@ class EndpointCollector {
           code.writeln(parser.customBody.join(','));
           code.write(',');
         }
-        code.write('}');
-        if (isJsonRequest) {
-          code.write(')');
+        code.writeln("});");
+      }
+      // add header
+      if (_hasHeaders || parser.headers.isNotEmpty) {
+        code.writeln('options.headers.addAll({');
+        if (_hasHeaders) {
+          code.writeln('..._headers,');
         }
-        code.writeln(';');
+        if (parser.headers.isNotEmpty) {
+          code.writeln(parser.headers.join(','));
+          code.write(',');
+        }
+        code.writeln("});");
       }
       if (returnType != 'void') {
         code.write('final response = ');
       }
-      code.write('await doWithClient((client) =>');
-      code.write(
-          "client.${parser.requestMethod.toLowerCase()}(Uri.parse(urlString)");
-      // add header
-      final hasHeader = _hasHeaders || parser.headers.isNotEmpty;
-      if (hasHeader) {
-        code.write(',headers:{');
-      }
-      if (_hasHeaders) {
-        code.writeln('..._headers,');
-      }
-      if (parser.headers.isNotEmpty) {
-        code.writeln(parser.headers.join(','));
-        code.write(',');
-      }
-      if (hasHeader) {
-        code.write('}');
-      }
-      // add body
-      if (putBody) {
-        code.writeln(",body: body,");
-      }
-      code.write("),");
+      code.write('await doRequest(options,');
       code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
@@ -266,38 +250,51 @@ class EndpointCollector {
       code.writeln(
           "final urlString = _encodeUrl('${parser.requestPath}', {});");
       code.writeln(
-          "final request = http.MultipartRequest('${requestMethod.toUpperCase()}', Uri.parse(urlString));");
+          "final options = MultipartRequestOptions('${requestMethod.toUpperCase()}', Uri.parse(urlString));");
       // add header
-      if (_hasHeaders) {
-        code.writeln('request.headers.addAll(_headers);');
+      if (_hasHeaders || parser.headers.isNotEmpty) {
+        code.writeln('options.headers.addAll({');
+        if (_hasHeaders) {
+          code.writeln('..._headers,');
+        }
+        if (parser.headers.isNotEmpty) {
+          code.writeln(parser.headers.join(','));
+          code.write(',');
+        }
+        code.writeln("});");
       }
-      if (parser.headers.isNotEmpty) {
-        code.writeln('request.headers.addAll({${parser.headers.join(',')}});');
-      }
-      if (_hasParameters) {
-        code.writeln("request.fields.addAll(_parameters);");
-      }
-      if (parser.body.isNotEmpty) {
-        code.writeln("request.fields.addAll({${parser.body.join(',')}});");
-      }
-      if (parser.customBody.isNotEmpty) {
-        code.writeln(
-            "request.fields.addAll({${parser.customBody.join(',')}});");
+      // add body
+      if (_hasParameters ||
+          parser.body.isNotEmpty ||
+          parser.customBody.isNotEmpty) {
+        code.writeln('options.fields.addAll({');
+        if (_hasParameters) {
+          code.writeln('..._parameters,');
+        }
+        if (parser.body.isNotEmpty) {
+          code.writeln(parser.body.join(','));
+          code.write(',');
+        }
+        if (parser.customBody.isNotEmpty) {
+          code.writeln(parser.customBody.join(','));
+          code.write(',');
+        }
+        code.writeln("});");
       }
       // add file
       for (var part in parser.multiParts) {
         if (part.isNullability) {
           code.writeln('if (${part.name} != null) {');
         }
-        code.writeln("request.files.add(${part.code});");
+        code.writeln("options.files.add(${part.code});");
         if (part.isNullability) {
           code.writeln('}');
         }
       }
       if (returnType != 'void') {
-        code.write('final rawResponse = ');
+        code.write('final response = ');
       }
-      code.write('await doWithClient((client) => client.send(request),');
+      code.write('await doRequest(options,');
       code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
@@ -311,10 +308,6 @@ class EndpointCollector {
       }
       code.write(');');
       // handle response
-      if (returnType != 'void') {
-        code.writeln(
-            "final response = await http.Response.fromStream(rawResponse);");
-      }
       code.writeln(_handleReturnType(
           returnType, methodReader.peek('produce')?.stringValue));
       mb.body = Code(code.toString());
@@ -607,29 +600,18 @@ class _ParameterParser {
           customBody.add('$nullCheckExp...${node.name}.toJson()');
         }
       } else if (node.isMultipart) {
-        final isBytes = node.type == 'Uint8List' || node.type == 'List<int>';
-        StringBuffer part =
-            StringBuffer('${isBytes ? '' : 'await '}http.MultipartFile.');
-        if (isBytes) {
-          part.write('fromBytes');
-        } else {
-          part.write('fromPath');
+        if (node.type != 'String') {
+          throw UnsupportedError('`@FilePart` do not support `${node.type}`');
         }
+        StringBuffer part = StringBuffer('MultipartFilePart');
         part.write("('${node.key}',${node.name}");
-        part.write(",filename: ");
         if (node.filename != null) {
-          part.write("'${node.filename}'");
-        } else {
-          part.write("path.basename(${node.name})");
+          part.write(",filename:'${node.filename}'");
         }
-        part.write(',contentType:MediaType.parse(');
         if (node.contentType != null) {
-          part.write("'${node.contentType}'");
-        } else {
-          part.write(
-              "mime_type.lookupMimeType(${node.name}) ?? 'application/octet-stream'");
+          part.write(",contentType:'${node.contentType}'");
         }
-        part.write('))');
+        part.write(')');
         multiParts.add(
             _MultiPartNode(node.isNullability, node.name, part.toString()));
       } else if (isNoBody) {

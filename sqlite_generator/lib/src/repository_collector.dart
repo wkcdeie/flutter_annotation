@@ -28,6 +28,7 @@ class RepositoryCollector {
         _entityChecker.firstAnnotationOf(entity, throwOnUnresolved: false);
     _entityClassName = entity.displayName;
     _collector.collect(entity, ConstantReader(entityAnnotation));
+    final coderElement = annotation.peek('coder')?.typeValue.element;
     final cls = Class((cb) {
       cb.name = '_\$${element.displayName}';
       cb.extend = refer(element.displayName);
@@ -44,11 +45,22 @@ class RepositoryCollector {
         fb.name = '_table';
         fb.assignment = Code("'${_collector.table}'");
       }));
+      // _coder
+      cb.fields.add(Field((fb) {
+        fb.modifier = FieldModifier.final$;
+        fb.type = refer('FieldCoder?');
+        fb.name = '_coder';
+        // fb.late = true;
+      }));
       cb.constructors.add(Constructor((ctb) {
         ctb.requiredParameters.add(Parameter((pb) {
           pb.name = '_database';
           pb.toThis = true;
         }));
+        ctb.initializers.add(Code(
+            "_coder=${coderElement == null ? 'null' : '${coderElement.displayName}()'}"));
+        ctb.body = Code(
+            "if (_coder != null) {FieldCoderRegistry.register('${_entityClassName}', _coder!);}");
       }));
       for (var method in element.methods) {
         DartObject? methodAnnotation =
@@ -551,7 +563,12 @@ class RepositoryCollector {
       '${key.substring(0, 1).toLowerCase()}${key.substring(1)}';
 
   String _getThrowDecoderError(String type) {
-    return "final decoder = FieldCoderRegistry.get('$type');if (decoder == null) {throw StateError('No decoder of type `$type` found.');}";
+    final coderExpr = type == _entityClassName ? '_coder' : "FieldCoderRegistry.get('$type')";
+    return """
+    final decoder = ${coderExpr};
+    if (decoder == null) {
+      throw StateError('No decoder of type `$type` found.');
+    }""";
   }
 
   bool _isBasicType(String type) {

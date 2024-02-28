@@ -20,17 +20,17 @@ class ConfigCollector {
     final group = annotation.peek('name')?.stringValue ?? '';
     final env = annotation.peek('env')?.stringValue;
     final version = annotation.peek('version')?.stringValue;
-    const storeVarName = '_persistence';
+    const storeVarName = '_store';
     final cls = Class((cb) {
       cb.name = '_\$${element.displayName}Impl';
       cb.extend = refer(element.displayName);
-      cb.fields.add(Field((fb){
+      cb.fields.add(Field((fb) {
         fb.modifier = FieldModifier.final$;
-        fb.type = refer('ConfigurePersistence');
+        fb.type = refer('ConfigureStore');
         fb.name = storeVarName;
       }));
-      cb.constructors.add(Constructor((ctb){
-        ctb.requiredParameters.add(Parameter((pb){
+      cb.constructors.add(Constructor((ctb) {
+        ctb.requiredParameters.add(Parameter((pb) {
           pb.name = storeVarName;
           pb.toThis = true;
         }));
@@ -106,25 +106,48 @@ class ConfigCollector {
               field.type.getDisplayString(withNullability: false);
           StringBuffer code =
               StringBuffer("dynamic result = $storeVarName.get($fieldRefKey);");
+          code.writeln("if (result != null) {");
           if (customDecoder != null) {
-            code.writeln("if (result != null) {");
             code.writeln("return $customDecoder.call(result);");
-            code.writeln("}");
-          } else if (fac.TypeChecker.isListType(nonnullFieldType) ||
-              fac.TypeChecker.isSetType(nonnullFieldType) ||
-              fac.TypeChecker.isMapType(nonnullFieldType)) {
-            code.writeln("if (result != null) {");
-            code.writeln("return $nonnullFieldType.from(result);");
+          } else {
+            final isListType = fac.TypeChecker.isListType(nonnullFieldType);
+            final isSetType = fac.TypeChecker.isSetType(nonnullFieldType);
+            final isMapType = fac.TypeChecker.isMapType(nonnullFieldType);
+            code.write("if (result is ");
+            if (isListType) {
+              code.write('List');
+            } else if (isSetType) {
+              code.write('Set');
+            } else if (isMapType) {
+              code.write('Map');
+            } else {
+              code.write(nonnullFieldType);
+            }
+            code.writeln(") {");
+            if (isListType || isSetType || isMapType) {
+              code.writeln("return $nonnullFieldType.from(result);");
+            } else {
+              code.write('return result;');
+            }
             code.writeln("}");
           }
-          code.write('return result');
-          if (isNullability && defaultValueObject != null) {
+          code.writeln("}");
+          bool hasDefaultValue = false;
+          if (defaultValueObject != null) {
             final defaultValue = fac.parseValueObject(defaultValueObject);
             if (defaultValue != null) {
-              code.write(" ?? $defaultValue");
+              code.write("return $defaultValue;");
+              hasDefaultValue = true;
             }
           }
-          code.write(';');
+          if (!hasDefaultValue) {
+            if (isNullability) {
+              code.write("return null;");
+            } else {
+              code.write(
+                  "throw StateError('<\$${fieldRefKey}> no value found');");
+            }
+          }
           mb.body = Code(code.toString());
         }));
       }

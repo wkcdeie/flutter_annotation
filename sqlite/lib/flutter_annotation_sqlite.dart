@@ -6,3 +6,4 @@ export 'src/migration.dart';
 export 'src/repository.dart';
 export 'src/coder.dart';
 export 'src/logger.dart';
+export 'src/sql_helper.dart';

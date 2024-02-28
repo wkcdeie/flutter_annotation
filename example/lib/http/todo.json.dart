@@ -11,13 +11,11 @@ AddTodo _$AddTodoFromJson(Map<String, dynamic> json) => AddTodo(
       body: json['body']?.toString() ?? '',
       userId: DecodeHelper.toInt(json['userId'], 0),
     );
-Map<String, dynamic> _$AddTodoToJson(AddTodo that) {
-  return {
-    'title': that.title,
-    'body': that.body,
-    'userId': that.userId,
-  };
-}
+Map<String, dynamic> _$AddTodoToJson(AddTodo that) => {
+      'title': that.title,
+      'body': that.body,
+      'userId': that.userId,
+    };
 
 TodoModel _$TodoModelFromJson(Map<String, dynamic> json) => TodoModel(
       id: DecodeHelper.toInt(json['id'], 0),

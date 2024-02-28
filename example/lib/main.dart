@@ -9,18 +9,17 @@ import 'route/router.route.dart';
 import 'main.middleware.dart';
 import 'config/app_config.dart';
 
-part 'main.log.dart';
-
 @EnableHttpMiddleware()
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   final multipleLog = MultipleLogOutput([
-    ConsoleLogOutput(),
+    if (isDebugMode) ConsoleLogOutput(),
     FileLogOutput(Directory.systemTemp.path),
   ]);
   setupLog(Level.FINE, multipleLog);
   setupGuards();
   setupMiddlewares();
-  AppConfig.setup().then((value) => runApp(const MyApp()));
+  AppConfig.initialize().then((_) => runApp(const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -36,26 +35,8 @@ class MyApp extends StatelessWidget {
       initialRoute: RouteChain.shared.initialRoute,
       onGenerateRoute: onGenerateRoute,
       navigatorObservers: [
-        _FixNavigatorWithPop.withLog(),
+        FixNavigatorWithPop(),
       ],
     );
-  }
-}
-
-@EnableLogging(name: 'Navigator', isDetached: true)
-class _FixNavigatorWithPop extends NavigatorObserver {
-  _FixNavigatorWithPop();
-
-  factory _FixNavigatorWithPop.withLog() =>
-      _$_FixNavigatorWithPopWithLog(ConsoleLogOutput());
-
-  @override
-  @InfoLog('didPop:#route.settings.name')
-  void didPop(Route route, Route? previousRoute) {
-    final name = route.settings.name;
-    if (name != null && RouteChain.shared.routes.contains(name)) {
-      RouteChain.shared.pop();
-    }
-    super.didPop(route, previousRoute);
   }
 }

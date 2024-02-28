@@ -13,8 +13,8 @@ part 'book.log.dart';
 class BookRepository {
   BookRepository();
 
-  factory BookRepository.withCache() =>
-      _$BookRepositoryWithCache(MemoryStore());
+  factory BookRepository.withCache(AsyncCacheStore store) =>
+      _$BookRepositoryWithCache(store);
 
   factory BookRepository.withLog() => _$BookRepositoryWithLog();
 
@@ -27,6 +27,10 @@ class BookRepository {
   @Cacheable('#bookId')
   @InfoLog('BookRepository:queryBook->#bookId')
   Future<BookInfo?> queryBook(String bookId) {
+    // test
+    if (bookId == '123') {
+      return Future.value(null);
+    }
     return Future.value(BookInfo(bookId));
   }
 

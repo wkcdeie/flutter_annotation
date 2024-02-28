@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:collection';
 import 'store.dart';
 
@@ -20,7 +19,7 @@ class MemoryStore implements CacheStore {
   }
 
   @override
-  FutureOr<Object?> get(String name, String key) {
+  Object? get(String name, String key) {
     CacheValue? valueMap = _map[name];
     if (valueMap == null) {
       return null;

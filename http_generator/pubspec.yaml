@@ -1,18 +1,19 @@
 name: flutter_http_generator
 description: Annotation-based JSON serialization, configuration file reading, http requests, routing tool library.
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/wkcdeie/flutter_annotation.git
+publish_to: none
 
 environment:
-  sdk: '>=2.19.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  code_builder: ^4.5.0
-  source_gen: ^1.3.0
-  build: ^2.3.0
-  analyzer: ^5.13.0
-  path: ^1.8.0
-  dart_style: ^2.3.0
+  code_builder: ^4.8.0
+  source_gen: ^1.4.0
+  build: ^2.4.1
+  analyzer: ^6.2.0
+  path: ^1.8.3
+  dart_style: ^2.3.4
   flutter_annotation_http:
     path: ../http
   flutter_annotation_common:

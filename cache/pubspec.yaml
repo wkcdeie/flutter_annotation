@@ -1,14 +1,14 @@
 name: flutter_annotation_cache
 description: A new Flutter project.
-version: 0.0.1
-homepage:
+version: 0.1.0
+homepage: https://github.com/wkcdeie/flutter_annotation.git
+publish_to: none
 
 environment:
-  sdk: '>=2.19.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  synchronized: ^3.1.0
-
-dev_dependencies:
-  test: any
-  flutter_lints: ^2.0.0
+  sqflite_common: ^2.5.3
+  crypto: ^3.0.3
+  flutter_annotation_sqlite:
+    path: ../sqlite

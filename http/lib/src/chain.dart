@@ -27,13 +27,13 @@ class HttpChain implements HttpMiddleware {
   void clear() => _middlewares.clear();
 
   @override
-  Future<http.BaseRequest> onRequest(http.BaseRequest request) async {
-    final middlewares = _findMiddleware(request.url.path);
-    http.BaseRequest newRequest = request;
+  Future<RequestOptions> onRequest(RequestOptions options) async {
+    final middlewares = _findMiddleware(options.url.path);
+    RequestOptions newOptions = options;
     for (var element in middlewares) {
-      newRequest = await element.onRequest(newRequest);
+      newOptions = await element.onRequest(newOptions);
     }
-    return newRequest;
+    return newOptions;
   }
 
   @override

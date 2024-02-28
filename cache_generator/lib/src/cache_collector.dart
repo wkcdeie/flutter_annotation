@@ -30,7 +30,7 @@ class CacheCollector {
       }));
       cb.fields.add(Field((fb) {
         fb.modifier = FieldModifier.final$;
-        fb.type = refer('CacheStore');
+        fb.type = refer('AsyncCacheStore');
         fb.name = cacheStoreKey;
       }));
       cb.constructors.add(Constructor((ctb) {
@@ -116,7 +116,8 @@ class CacheCollector {
             }
             return e.displayName;
           }).join(',');
-          final statement = "${isFuture ? 'await ' : ''}super.${method.displayName}(${args});";
+          final statement =
+              "${isFuture ? 'await ' : ''}super.${method.displayName}(${args});";
           StringBuffer code = StringBuffer();
           if (condition != null) {
             code.writeln(
@@ -142,7 +143,7 @@ class CacheCollector {
               code.writeln('if (result != null) {');
             }
             code.writeln(
-                "$cacheStoreKey.put(_cacheName, cacheKey, result$convertExpr$ttlExpr);");
+                "$cacheStoreKey.asyncPut(_cacheName, cacheKey, result$convertExpr$ttlExpr);");
             if (isNullability) {
               code.writeln('}');
             }
@@ -150,7 +151,7 @@ class CacheCollector {
           } else if (isQuery) {
             code.writeln("$resultType? result;");
             code.writeln(
-                "final cacheObject = await $cacheStoreKey.get(_cacheName, cacheKey);");
+                "final cacheObject = await $cacheStoreKey.asyncGet(_cacheName, cacheKey);");
             code.writeln('if (cacheObject != null) {');
             if (isCustomClass) {
               code.writeln(
@@ -175,7 +176,7 @@ class CacheCollector {
               code.writeln('if (result != null) {');
             }
             code.writeln(
-                '$cacheStoreKey.put(_cacheName, cacheKey, result$convertExpr$ttlExpr);');
+                '$cacheStoreKey.asyncPut(_cacheName, cacheKey, result$convertExpr$ttlExpr);');
             if (isNullability) {
               code.writeln('}');
             }

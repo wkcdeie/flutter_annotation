@@ -1,4 +1,3 @@
-
 import 'package:flutter_annotation_http/flutter_annotation_http.dart';
 import 'package:http/http.dart';
 
@@ -12,11 +11,11 @@ class TokenMiddleware implements HttpMiddleware {
   TokenMiddleware([this.headerKey = 'token']);
 
   @override
-  Future<BaseRequest> onRequest(BaseRequest request) {
+  Future<RequestOptions> onRequest(RequestOptions options) {
     if (token != null) {
-      request.headers[headerKey] = token!;
+      options.headers[headerKey] = token!;
     }
-    return Future.value(request);
+    return Future.value(options);
   }
 
   @override

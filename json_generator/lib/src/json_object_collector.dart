@@ -179,7 +179,8 @@ class JsonObjectCollector {
       pb.name = 'that';
       pb.type = refer(className);
     }));
-    StringBuffer code = StringBuffer('return {');
+    builder.lambda = true;
+    StringBuffer code = StringBuffer('{');
     for (var field in _fieldCollector.fields) {
       String key = "'${field.jsonKey}'";
       String value = "that.${field.fieldName}";
@@ -219,7 +220,7 @@ class JsonObjectCollector {
         code.writeln("$key: $value,");
       }
     }
-    code.writeln('};');
+    code.writeln('}');
     builder.body = Code(code.toString());
   }
 
@@ -230,7 +231,8 @@ class JsonObjectCollector {
       pb.name = 'that';
       pb.type = refer(className);
     }));
-    builder.body = Code("return json.encode(_\$${className}ToJson(that));");
+    builder.lambda = true;
+    builder.body = Code("json.encode(_\$${className}ToJson(that))");
   }
 
   void _copyWith(MethodBuilder builder, String className) {
@@ -240,17 +242,18 @@ class JsonObjectCollector {
       pb.name = 'that';
       pb.type = refer(className);
     }));
+    builder.lambda = true;
     builder.optionalParameters
         .addAll(_fieldCollector.fields.map((field) => Parameter((pb) {
               pb.type = refer('${field.typeName}?');
               pb.name = field.fieldName;
             })));
-    StringBuffer code = StringBuffer("return $className(");
+    StringBuffer code = StringBuffer("$className(");
     for (var field in _fieldCollector.fields) {
       code.writeln(
           "${field.fieldName}: ${field.fieldName} ?? that.${field.fieldName},");
     }
-    code.writeln(');');
+    code.writeln(')');
     builder.body = Code(code.toString());
   }
 

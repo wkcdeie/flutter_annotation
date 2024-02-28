@@ -14,18 +14,25 @@ part 'database.db.dart';
 abstract class AppDatabase {
   sqflite.Database get database;
 
+  sqflite.DatabaseFactory? _databaseFactory;
+
+  set databaseFactory(sqflite.DatabaseFactory value) {
+    _databaseFactory = value;
+  }
+
+  sqflite.DatabaseFactory get sqliteFactory {
+    _databaseFactory ??= sqflite.databaseFactorySqflitePlugin;
+    if (kReleaseMode) {
+      return _databaseFactory!;
+    }
+    return sqlLoggerFactory(_databaseFactory!);
+  }
+
   Future<void> open(String dbPath, {bool inMemory = false});
 
   Future<void> close();
 
   static AppDatabase create() => _$AppDatabase();
-
-  sqflite.DatabaseFactory get sqliteFactory {
-    if (kReleaseMode) {
-      return sqflite.databaseFactorySqflitePlugin;
-    }
-    return sqlLoggerFactory(sqflite.databaseFactorySqflitePlugin);
-  }
 }
 
 class V2Migrator extends Migrator {

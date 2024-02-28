@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:async/async.dart';
 import 'package:http/http.dart';
 import 'package:http/io_client.dart' show IOStreamedResponse;
+import 'package:http_parser/http_parser.dart' show MediaType;
 
 import 'chain.dart';
+import 'middleware.dart';
 import 'retry.dart';
 import 'cancelable.dart';
 
@@ -13,11 +16,9 @@ part 'internal.dart';
 
 class AnnotationClient extends BaseClient {
   final _InternalClient _inner;
-  final HttpChain? chain;
   final RetryOptions? retryOptions;
 
   AnnotationClient({
-    this.chain,
     this.retryOptions,
     int? timeout,
     CancelToken? cancelToken,
@@ -25,14 +26,9 @@ class AnnotationClient extends BaseClient {
 
   @override
   Future<StreamedResponse> send(BaseRequest request) async {
-    BaseRequest newRequest = request;
-    if (chain != null) {
-      newRequest = await chain!.onRequest(newRequest);
-    }
     StreamedResponse response;
-    final task = retryOptions != null
-        ? _doRetryRequest(newRequest)
-        : _inner.send(newRequest);
+    final task =
+        retryOptions != null ? _doRetryRequest(request) : _inner.send(request);
     if (_inner.cancelToken != null) {
       _inner.cancelToken?.bind(task);
       response = await _inner.cancelToken!.result;
@@ -45,22 +41,9 @@ class AnnotationClient extends BaseClient {
           response.reasonPhrase != null && response.reasonPhrase!.isNotEmpty
               ? response.reasonPhrase!
               : 'Http failed:${response.statusCode}',
-          newRequest.url);
+          request.url);
     }
-    Response newResponse = await Response.fromStream(response);
-    if (chain != null) {
-      newResponse = await chain!.onResponse(newResponse);
-    }
-    return StreamedResponse(
-      ByteStream.fromBytes(newResponse.bodyBytes),
-      newResponse.statusCode,
-      contentLength: newResponse.contentLength,
-      request: newResponse.request,
-      headers: newResponse.headers,
-      isRedirect: newResponse.isRedirect,
-      persistentConnection: newResponse.persistentConnection,
-      reasonPhrase: newResponse.reasonPhrase,
-    );
+    return response;
   }
 
   @override
@@ -109,22 +92,62 @@ class AnnotationClient extends BaseClient {
   }
 }
 
-Future<T> doWithClient<T>(
-  Future<T> Function(Client) fn, {
-  HttpChain? chain,
-  RetryOptions? retryOptions,
-  int? timeout,
-  CancelToken? cancelToken,
-}) async {
+Future<Response> doRequest(RequestOptions options,
+    {HttpChain? chain,
+    RetryOptions? retryOptions,
+    int? timeout,
+    CancelToken? cancelToken}) async {
   final client = AnnotationClient(
-    chain: chain,
-    retryOptions: retryOptions,
-    timeout: timeout,
-    cancelToken: cancelToken,
-  );
+      retryOptions: retryOptions, timeout: timeout, cancelToken: cancelToken);
   try {
-    return await fn(client);
+    StreamedResponse response;
+    if (chain != null) {
+      final request = await _buildRequest(await chain.onRequest(options));
+      response = await client.send(request);
+    } else {
+      response = await client.send(await _buildRequest(options));
+    }
+    Response newResponse = await Response.fromStream(response);
+    if (chain != null) {
+      newResponse = await chain.onResponse(newResponse);
+    }
+    return newResponse;
   } finally {
     client.close();
   }
+}
+
+Future<BaseRequest> _buildRequest(RequestOptions options) async {
+  BaseRequest request;
+  if (options is MultipartRequestOptions) {
+    final multipartRequest = MultipartRequest(options.method, options.url);
+    multipartRequest.fields.addAll(
+        options.fields.map((key, value) => MapEntry(key, value.toString())));
+    for (var part in options.files) {
+      final file = await MultipartFile.fromPath(
+        part.field,
+        part.filePath,
+        filename: part.filename,
+        contentType: MediaType.parse(part.contentType),
+      );
+      multipartRequest.files.add(file);
+    }
+    request = multipartRequest;
+  } else {
+    final formRequest = Request(options.method, options.url);
+    final fields = (options as FormRequestOptions).fields;
+    if (options.contentType != null &&
+        options.contentType!.startsWith('application/json')) {
+      formRequest.body = jsonEncode(fields);
+    } else {
+      formRequest.bodyFields =
+          fields.map((key, value) => MapEntry(key, value.toString()));
+    }
+    request = formRequest;
+  }
+  request.headers.addAll(options.headers);
+  request.maxRedirects = options.maxRedirects;
+  request.followRedirects = options.followRedirects;
+  request.persistentConnection = options.persistentConnection;
+  return request;
 }

@@ -50,49 +50,6 @@ class DatabaseCollector {
         mb.modifier = MethodModifier.async;
         mb.body = Code('_database?.close();\n_database = null;');
       }));
-      // _addTable
-      cb.methods.add(Method((mb) {
-        mb.returns = refer('Future<void>');
-        mb.name = '_addTable';
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('$sqlitePrefix.Database');
-          pb.name = 'db';
-        }));
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('String');
-          pb.name = 'table';
-        }));
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('List<String>');
-          pb.name = 'columns';
-        }));
-        mb.body = Code(
-            "return db.execute('CREATE TABLE IF NOT EXISTS \$table(\${columns.join(',')})');");
-      }));
-      // _addIndex
-      cb.methods.add(Method((mb) {
-        mb.returns = refer('Future<void>');
-        mb.name = '_addIndex';
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('$sqlitePrefix.Database');
-          pb.name = 'db';
-        }));
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('String');
-          pb.name = 'table';
-        }));
-        mb.requiredParameters.add(Parameter((pb) {
-          pb.type = refer('List<String>');
-          pb.name = 'columns';
-        }));
-        mb.optionalParameters.add(Parameter((pb) {
-          pb.type = refer('bool');
-          pb.name = 'isUnique';
-          pb.defaultTo = Code('false');
-        }));
-        mb.body = Code(
-            "return db.execute('CREATE \${isUnique?'UNIQUE':''} INDEX IF NOT EXISTS \${table}_\${columns.join('_')} ON \$table(\${columns.join(',')})');");
-      }));
     });
     final lib = Library((lb) {
       lb.directives.add(Directive.partOf(fileName));
@@ -134,18 +91,18 @@ class DatabaseCollector {
         final collector = EntityCollector();
         collector.collect(element, ConstantReader(annotation));
         code.writeln(
-            "await _addTable(db, '${collector.table}', [${collector.columns.map((e) => "'${e.sql}'").join(',')}");
+            "await SqlHelper.createTable(db, '${collector.table}', [${collector.columns.map((e) => "'${e.sql}'").join(',')}]");
         if (collector.primaryKeys.isNotEmpty) {
-          code.write(",'PRIMARY KEY(${collector.primaryKeys.join(',')})'");
+          code.write(", primaryKeys: [${collector.primaryKeys.map((e) => "'${e}'").join(',')}]");
         }
-        code.write(']);');
+        code.write(');');
         for (var keys in collector.uniqueKeys) {
           code.write(
-              "await _addIndex(db, '${collector.table}', [${keys.join(',')}], true);");
+              "await SqlHelper.createIndex(db, '${collector.table}', [${keys.join(',')}], true);");
         }
         if (collector.columnIndexes.isNotEmpty) {
           code.write(
-              "await _addIndex(db, '${collector.table}', [${collector.columnIndexes.map((e) => "'${e}'").join(',')}]);");
+              "await SqlHelper.createIndex(db, '${collector.table}', [${collector.columnIndexes.map((e) => "'${e}'").join(',')}]);");
         }
       }
       code.write('},');

@@ -12,7 +12,8 @@ part 'json_placeholder.api.dart';
   headers: {'x-lang-platform': 'Dart'},
 )
 abstract class JsonPlaceholderApi {
-  factory JsonPlaceholderApi() => _$JsonPlaceholderApiImpl();
+  factory JsonPlaceholderApi([HttpChain? chain]) =>
+      _$JsonPlaceholderApiImpl(chain);
 
   @GET('/todos/{id}', produce: RequestMapping.jsonHeader)
   Future<TodoModel> getTodo(@PathVariable() String id);
@@ -32,6 +33,18 @@ abstract class JsonPlaceholderApi {
 
   @DELETE('/todos/{id}')
   Future<http.Response> deleteTodo(@PathVariable() int id);
+
+  @Multipart('/upload', produce: RequestMapping.textHeader, timeout: 60 * 1000)
+  Future<String> upload(
+      @RequestHeader()
+          String type,
+      String from,
+      @RequestBody()
+          AddTodo todo,
+      @FilePart(
+          /*filename: 'image',*/
+          contentType: 'image/jpeg')
+          String imagePath);
 }
 
-Map _todoToJson(AddTodo todo) => todo.toJson();
+Map<String, dynamic> _todoToJson(AddTodo todo) => todo.toJson();

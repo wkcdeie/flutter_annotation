@@ -1,17 +1,19 @@
 name: example
 description: A new Flutter project.
-publish_to: 'none'
+publish_to: none
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.19.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
   cupertino_icons: ^1.0.2
-  sqflite: ^2.2.8+4
+  sqflite: ^2.3.0
+  # test
+  sqflite_common_ffi: ^2.3.0
 
   flutter_annotation_configure:
     path: ../configure
@@ -31,8 +33,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
-  build_runner: 2.3.3
+  build_runner: ^2.4.8
   flutter_configure_generator:
     path: ../configure_generator
   flutter_http_generator:

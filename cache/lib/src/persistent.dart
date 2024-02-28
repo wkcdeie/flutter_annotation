@@ -1,115 +1,145 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:synchronized/synchronized.dart';
+import 'package:crypto/crypto.dart' show md5;
 
+import 'cache_data_repository.dart';
+import 'cache_data.dart';
 import 'store.dart';
 
-typedef _StoreNodeType = Map<String, _StorageData>;
+class PersistentStore extends AsyncCacheStore {
+  static const _fsDir = 'fs';
+  final String cacheDir;
+  final CacheDataRepository repository;
 
-class PersistentStore extends CacheStore {
-  final Lock _lock = Lock();
-  final Map<String, _StoreNodeType> _store = {};
-  final String filePath;
+  PersistentStore(this.cacheDir, this.repository);
 
-  PersistentStore(this.filePath) {
-    final file = File(filePath);
-    _lock.synchronized(() async {
-      final isExists = await file.exists();
-      if (!isExists) {
-        await file.create(recursive: true);
-        // content = <String, _StoreNodeType>{};
-      } else {
-        final jsonString = await file.readAsString();
-        final jsonObject = Map<String, dynamic>.from(jsonDecode(jsonString));
-        final data = jsonObject.map((key, value) => MapEntry(
-            key,
-            Map<String, dynamic>.from(value).map(
-                (key, value) => MapEntry(key, _StorageData.fromJson(value)))));
-        _store.addAll(data);
+  Future<List<MapEntry<String, Object>>> getObjects(String name) async {
+    final key = _getCacheKey(name);
+    final keyLength = key.length;
+    List<MapEntry<String, Object>> entries = [];
+    final values = await repository.findByName(key);
+    for (var cacheData in values) {
+      final cacheKey = cacheData.key.substring(keyLength);
+      final object = await _readObject(name, cacheKey, cacheData);
+      if (object != null) {
+        entries.add(MapEntry(cacheKey, object));
       }
-    });
+    }
+    return entries;
   }
 
   @override
   void clear(String name) {
-    _lock.synchronized(() async {
-      if (_store.containsKey(name)) {
-        _store.remove(name);
-        await _flush(_store);
+    final key = _getCacheKey(name);
+    repository.findPathsByName(key).then((paths) {
+      if (paths.isNotEmpty) {
+        return repository.deleteByName(key).then((value) =>
+            value ? paths.map((e) => File('$cacheDir/$e')).toList() : <File>[]);
+      }
+      return Future.value(<File>[]);
+    }).then((result) async {
+      for (var file in result) {
+        if (await file.exists()) {
+          file.delete();
+        }
       }
     });
   }
 
   @override
-  FutureOr<Object?> get(String name, String key) async {
-    return _lock.synchronized<Object?>(() {
-      final map = _store[name];
-      if (map == null) {
-        return null;
-      }
-      final node = map[key];
-      if (node?.expires != null) {
-        final nowDate = DateTime.now();
-        final expireDate = DateTime.fromMillisecondsSinceEpoch(node!.expires!);
-        if (expireDate.compareTo(nowDate) != 1) {
-          map.remove(key);
-          if (map.isEmpty) {
-            _store.remove(name);
-          }
-          _flush(_store);
-          return null;
-        }
-      }
-      return node?.data;
-    });
+  Object? get(String name, String key) {
+    return null;
   }
 
   @override
   void put(String name, String key, Object value, {int? expires}) {
-    _lock.synchronized(() {
-      final node = _StorageData(value, expires);
-      if (_store.containsKey(name)) {
-        _store[name]![key] = node;
-      } else {
-        _store[name] = {key: node};
-      }
-      _flush(_store);
-    });
+    asyncPut(name, key, value, expires: expires);
   }
 
   @override
   void remove(String name, String key) {
-    _lock.synchronized(() {
-      if (_store.containsKey(name)) {
-        final map = _store[name]!;
-        if (map.containsKey(key)) {
-          map.remove(key);
-          if (map.isEmpty) {
-            _store.remove(name);
-          }
-          _flush(_store);
+    repository.deleteByKey(_getCacheKey(name, key)).then((value) async {
+      if (value) {
+        final cacheFile = File(_getCacheFilePath(name, key));
+        if (await cacheFile.exists()) {
+          await cacheFile.delete();
         }
       }
     });
   }
 
-  Future<void> _flush(Map<String, _StoreNodeType> data) async {
-    final file = File(filePath);
-    final contents = jsonEncode(data);
-    await file.writeAsString(contents, flush: true);
+  @override
+  Future<Object?> asyncGet(String name, String key) async {
+    final cacheData = await repository.findByKey(_getCacheKey(name, key));
+    if (cacheData == null) {
+      return null;
+    }
+    return _readObject(name, key, cacheData);
   }
-}
 
-class _StorageData {
-  final dynamic data;
-  final int? expires;
+  @override
+  Future<void> asyncPut(String name, String key, Object value,
+      {int? expires}) async {
+    final jsonString = jsonEncode(value);
+    final jsonData = utf8.encode(jsonString);
+    final cacheKey = _getCacheKey(name, key);
+    String? cacheFilePath;
+    Uint8List? cacheData;
+    if (jsonData.length > 16 * 1024) {
+      final rootDir = Directory('$cacheDir/$_fsDir');
+      if (!await rootDir.exists()) {
+        await rootDir.create(recursive: true);
+      }
+      final cacheFile = File(_getCacheFilePath(name, key));
+      await cacheFile.writeAsBytes(jsonData, mode: FileMode.writeOnly);
+      cacheFilePath = cacheFile.path.substring(cacheDir.length + 1);
+    } else {
+      cacheData = Uint8List.fromList(jsonData);
+    }
+    await repository.insert(CacheData(
+      cacheKey,
+      jsonData.length,
+      expireDate: expires,
+      filePath: cacheFilePath,
+      data: cacheData,
+    ));
+  }
 
-  _StorageData(this.data, this.expires);
+  String _getCacheKey(String name, [String? key]) => '$name#${key ?? ''}';
 
-  factory _StorageData.fromJson(Map<String, dynamic> json) =>
-      _StorageData(json['data'], json['expires']);
+  String _getCacheFilePath(String name, String key) {
+    final fileName = md5.convert(utf8.encode(_getCacheKey(name, key)));
+    return '$cacheDir/$_fsDir/$fileName.dat';
+  }
 
-  Map<String, dynamic> toJson() => {'data': data, 'expires': expires};
+  Future<Object?> _readObject(
+      String name, String key, CacheData cacheData) async {
+    if (cacheData.expireDate != null) {
+      final nowDate = DateTime.now();
+      final expireDate =
+          DateTime.fromMillisecondsSinceEpoch(cacheData.expireDate!);
+      if (expireDate.compareTo(nowDate) != 1) {
+        remove(name, key);
+        return null;
+      }
+    } else if (cacheData.data != null && cacheData.data!.isNotEmpty) {
+      return _decodeData(cacheData.data!);
+    }
+    final cacheFile = File(_getCacheFilePath(name, key));
+    if (await cacheFile.exists()) {
+      final fileData = await cacheFile.readAsBytes();
+      if (fileData.isNotEmpty) {
+        return _decodeData(fileData);
+      }
+    }
+    return null;
+  }
+
+  Object _decodeData(Uint8List data) {
+    final jsonString = utf8.decode(data);
+    return jsonDecode(jsonString);
+  }
 }

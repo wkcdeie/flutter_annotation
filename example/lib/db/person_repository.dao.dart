@@ -7,11 +7,17 @@
 part of 'person_repository.dart';
 
 class _$PersonRepository extends PersonRepository {
-  _$PersonRepository(this._database);
+  _$PersonRepository(this._database) : _coder = _PersonCoder() {
+    if (_coder != null) {
+      FieldCoderRegistry.register('Person', _coder!);
+    }
+  }
 
   final sqflite.Database _database;
 
   final String _table = 'tb_person';
+
+  final FieldCoder? _coder;
 
   @override
   Future<List<Person>> findEntities(
@@ -31,7 +37,7 @@ class _$PersonRepository extends PersonRepository {
         whereArgs: whereArgs,
         limit: limit,
         offset: (page - 1) * limit);
-    final decoder = FieldCoderRegistry.get('Person');
+    final decoder = _coder;
     if (decoder == null) {
       throw StateError('No decoder of type `Person` found.');
     }
@@ -68,7 +74,7 @@ class _$PersonRepository extends PersonRepository {
     } else if (rows.length > 1) {
       throw StateError('Too many results are returned.');
     }
-    final decoder = FieldCoderRegistry.get('Person');
+    final decoder = _coder;
     if (decoder == null) {
       throw StateError('No decoder of type `Person` found.');
     }
@@ -170,6 +176,30 @@ class _$PersonRepository extends PersonRepository {
       throw StateError('The column `birthday` returned null.');
     }
     return decoder.decode(birthday) as DateTime;
+  }
+
+  @override
+  Future<Address?> findAddressByName(String name) async {
+    List<Object?> whereArgs = [];
+    List<String> whereString = [];
+    whereString.add('name=?');
+    whereArgs.add(name);
+    final rows = await _database.query(_table,
+        columns: ['address'],
+        where: whereString.isNotEmpty ? whereString.join(' ') : null,
+        whereArgs: whereArgs);
+    if (rows.isEmpty) {
+      return null;
+    }
+    final decoder = FieldCoderRegistry.get('Address');
+    if (decoder == null) {
+      throw StateError('No decoder of type `Address` found.');
+    }
+    final address = rows.first['address'];
+    if (address == null) {
+      return null;
+    }
+    return decoder.decode(address) as Address?;
   }
 
   @override

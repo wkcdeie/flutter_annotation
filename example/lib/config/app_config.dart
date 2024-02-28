@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter_annotation_cache/flutter_annotation_cache.dart';
 import 'package:flutter_annotation_configure/flutter_annotation_configure.dart';
+import 'package:sqflite/sqflite.dart';
 
 part 'app_config.cfg.dart';
 
@@ -20,19 +22,20 @@ abstract class AppConfig {
   int? weight;
 
   @ConfigField(defaultValue: false)
-  bool? isVip;
+  late bool isVip;
 
   @ConfigField(encoder: colorValueEncode, decoder: colorValueDecode)
   Set<ColorValue>? colors;
 
   List<double>? fontSizes;
 
-  static Future<void> setup() async {
-    final rootPath = Directory.systemTemp.path;
-    final persistence = JsonPersistence('$rootPath/app.cfg',
-        encryptKey: '0123456789abcdef0123456789abcdef');
-    _instance = _$AppConfigImpl(persistence);
-    await persistence.load();
+  static Future<void> initialize() async {
+    await CacheDatabase.initialize(
+        Directory.systemTemp.path, databaseFactorySqflitePlugin);
+    final store = DefaultConfigureStore(CacheDatabase.store);
+    store.setData(
+        await CacheDatabase.store.getObjects(DefaultConfigureStore.tag));
+    _instance = _$AppConfigImpl(store);
   }
 }
 
@@ -53,6 +56,20 @@ class ColorValue {
         'blue': blue,
         'alpha': alpha,
       };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ColorValue &&
+          runtimeType == other.runtimeType &&
+          red == other.red &&
+          green == other.green &&
+          blue == other.blue &&
+          alpha == other.alpha;
+
+  @override
+  int get hashCode =>
+      red.hashCode ^ green.hashCode ^ blue.hashCode ^ alpha.hashCode;
 }
 
 dynamic colorValueEncode(dynamic value) {

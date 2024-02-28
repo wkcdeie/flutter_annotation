@@ -2,6 +2,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:code_builder/code_builder.dart';
 import 'package:dart_style/dart_style.dart';
+import 'package:path/path.dart' as path;
 import 'package:flutter_annotation_router/flutter_annotation_router.dart';
 import 'package:flutter_annotation_common/flutter_annotation_common.dart'
     as fac;
@@ -19,10 +20,15 @@ class RouterCollector {
     _routeNodes.sort((a, b) => a.compareTo(b));
     _guardNodes.sort((a, b) => a.compareTo(b));
     final lib = Library((lb) {
-      lb.body.add(Directive.import('package:flutter/material.dart'));
-      lb.body.add(Directive.import('package:flutter/cupertino.dart'));
+      if (routePresent == 'Cupertino') {
+        lb.body.add(Directive.import('package:flutter/cupertino.dart'));
+      } else {
+        lb.body.add(Directive.import('package:flutter/material.dart'));
+      }
       lb.body.add(Directive.import(
           'package:flutter_annotation_router/flutter_annotation_router.dart'));
+      lb.body.add(Directive.import(
+          '${path.basenameWithoutExtension(fileName)}.navigate.dart'));
       String? initialRoute;
       for (var node in _routeNodes) {
         lb.body.add(Directive.import(node.filePath));
@@ -41,7 +47,7 @@ class RouterCollector {
         code.writeln('{');
         for (var node in _routeNodes) {
           code.write(
-              "'${node.routePath}': (settings) => ${node.routePresent ?? routePresent}PageRoute(settings:settings,builder:(ctx) {");
+              "NavigateHelper.${node.routeName}: (settings) => ${node.routePresent ?? routePresent}PageRoute(settings:settings,builder:(ctx) {");
           if (node.values.isNotEmpty) {
             code.writeln(
                 'final args = Map<String, dynamic>.from(settings.arguments as Map);');
@@ -112,9 +118,35 @@ class RouterCollector {
         code.writeln(
             'final chain = RouteChain.${initialRoute == null ? 'shared' : 'withInitialRoute(\'$initialRoute\')'};');
         for (var node in _guardNodes) {
-          code.writeln("chain.add('${node.pattern}', ${node.createFactory}());");
+          code.writeln(
+              "chain.add('${node.pattern}', ${node.createFactory}());");
         }
         mb.body = Code(code.toString());
+      }));
+      // FixNavigatorWithPop
+      lb.body.add(Class((cb) {
+        cb.name = 'FixNavigatorWithPop';
+        cb.extend = refer('NavigatorObserver');
+        // didPop
+        cb.methods.add(Method((mb) {
+          mb.annotations.add(refer('override'));
+          mb.returns = refer('void');
+          mb.name = 'didPop';
+          mb.requiredParameters.add(Parameter((pb) {
+            pb.name = 'route';
+            pb.type = refer('Route');
+          }));
+          mb.requiredParameters.add(Parameter((pb) {
+            pb.name = 'previousRoute';
+            pb.type = refer('Route?');
+          }));
+          mb.body = Code("""
+          final name = route.settings.name;
+          if (name != null && RouteChain.shared.routes.contains(name)) {
+            RouteChain.shared.pop();
+          }
+          super.didPop(route, previousRoute);""");
+        }));
       }));
     });
     return formatter.format('${lib.accept(emitter)}');
@@ -148,6 +180,8 @@ class RouterCollector {
     _routeNodes.add(_RouteNode(
       filePath: element.library.identifier,
       className: element.displayName,
+      routeName:
+          '${annotation.peek('alias')?.stringValue ?? element.displayName}Route',
       routePath: annotation.read('path').stringValue,
       routePresent: annotation.peek('present')?.stringValue,
       values: values,
@@ -168,6 +202,7 @@ class RouterCollector {
 class _RouteNode implements Comparable<_RouteNode> {
   final String filePath;
   final String className;
+  final String routeName;
   final String routePath;
   final String? routePresent;
   final List<_RouteValueNode> values;
@@ -176,6 +211,7 @@ class _RouteNode implements Comparable<_RouteNode> {
   const _RouteNode(
       {required this.filePath,
       required this.className,
+      required this.routeName,
       required this.routePath,
       this.routePresent,
       required this.values,

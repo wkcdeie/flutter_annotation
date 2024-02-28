@@ -21,30 +21,26 @@ UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => UserInfo(
           : null,
       session: durationDecode.call(json['session']),
     );
-Map<String, dynamic> _$UserInfoToJson(UserInfo that) {
-  return {
-    'name': that.name,
-    'age': that.age,
-    'height': that.height,
-    'isVip': that.isVip,
-    'lastLogin': that.lastLogin.millisecondsSinceEpoch,
-    'photos': that.photos,
-    'level': that.level.value,
-    if (that.bio != null) 'bio': that.bio,
-    if (that.addressInfo != null) 'addressInfo': that.addressInfo?.toJson(),
-    'session': durationEncode.call(that.session),
-  };
-}
+Map<String, dynamic> _$UserInfoToJson(UserInfo that) => {
+      'name': that.name,
+      'age': that.age,
+      'height': that.height,
+      'isVip': that.isVip,
+      'lastLogin': that.lastLogin.millisecondsSinceEpoch,
+      'photos': that.photos,
+      'level': that.level.value,
+      if (that.bio != null) 'bio': that.bio,
+      if (that.addressInfo != null) 'addressInfo': that.addressInfo?.toJson(),
+      'session': durationEncode.call(that.session),
+    };
 
 AddressInfo _$AddressInfoFromJson(Map<String, dynamic> json) => AddressInfo(
       province: json['province']?.toString() ?? '',
       city: json['city']?.toString() ?? '',
       area: json['area']?.toString() ?? '',
     );
-Map<String, dynamic> _$AddressInfoToJson(AddressInfo that) {
-  return {
-    'province': that.province,
-    'city': that.city,
-    'area': that.area,
-  };
-}
+Map<String, dynamic> _$AddressInfoToJson(AddressInfo that) => {
+      'province': that.province,
+      'city': that.city,
+      'area': that.area,
+    };

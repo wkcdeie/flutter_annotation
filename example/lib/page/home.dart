@@ -39,7 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Row(
               children: [
                 Expanded(
-                  child:TextField(
+                  child: TextField(
                     controller: _controller,
                     decoration: const InputDecoration(
                       hintText: 'Username',
@@ -53,6 +53,10 @@ class _MyHomePageState extends State<MyHomePage> {
                   },
                 ),
               ],
+            ),
+            TextButton(
+              onPressed: () => context.toFirst(text: 'From Home', age: 18),
+              child: Text('Go Fist'),
             )
           ],
         ),

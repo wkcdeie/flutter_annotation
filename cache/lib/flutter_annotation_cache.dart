@@ -6,3 +6,4 @@ export 'src/store.dart';
 export 'src/memory.dart';
 export 'src/persistent.dart';
 export 'src/multiple.dart';
+export 'src/database.dart';

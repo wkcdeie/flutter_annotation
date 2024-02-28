@@ -23,10 +23,12 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     final urlString = _encodeUrl(
         'https://jsonplaceholder.typicode.com/todos/${Uri.encodeQueryComponent(id)}',
         queryParameters);
-    final response = await doWithClient(
-      (client) => client.get(Uri.parse(urlString), headers: {
-        ..._headers,
-      }),
+    final options = FormRequestOptions('GET', Uri.parse(urlString));
+    options.headers.addAll({
+      ..._headers,
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     final responseData = jsonDecode(response.body);
@@ -45,10 +47,12 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     };
     final urlString = _encodeUrl(
         'https://jsonplaceholder.typicode.com/todos', queryParameters);
-    final response = await doWithClient(
-      (client) => client.get(Uri.parse(urlString), headers: {
-        ..._headers,
-      }),
+    final options = FormRequestOptions('GET', Uri.parse(urlString));
+    options.headers.addAll({
+      ..._headers,
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     final responseData = jsonDecode(response.body);
@@ -65,19 +69,17 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   Future<TodoModel> createTodo(AddTodo data) async {
     final urlString =
         _encodeUrl('https://jsonplaceholder.typicode.com/todos', {});
-    final body = jsonEncode({
+    final options = FormRequestOptions('POST', Uri.parse(urlString));
+    options.fields.addAll({
       ..._parameters,
       ...data.toJson(),
     });
-    final response = await doWithClient(
-      (client) => client.post(
-        Uri.parse(urlString),
-        headers: {
-          ..._headers,
-          'content-type': 'application/json; charset=utf-8',
-        },
-        body: body,
-      ),
+    options.headers.addAll({
+      ..._headers,
+      'content-type': 'application/json; charset=utf-8',
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     final responseData = jsonDecode(response.body);
@@ -95,19 +97,17 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   ) async {
     final urlString =
         _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final body = jsonEncode({
+    final options = FormRequestOptions('PUT', Uri.parse(urlString));
+    options.fields.addAll({
       ..._parameters,
       ..._todoToJson.call(data),
     });
-    final response = await doWithClient(
-      (client) => client.put(
-        Uri.parse(urlString),
-        headers: {
-          ..._headers,
-          'content-type': 'application/json; charset=utf-8',
-        },
-        body: body,
-      ),
+    options.headers.addAll({
+      ..._headers,
+      'content-type': 'application/json; charset=utf-8',
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     final responseData = jsonDecode(response.body);
@@ -125,19 +125,17 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   ) async {
     final urlString =
         _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final body = {
+    final options = FormRequestOptions('PATCH', Uri.parse(urlString));
+    options.fields.addAll({
       ..._parameters,
       'title': title,
-    };
-    final response = await doWithClient(
-      (client) => client.patch(
-        Uri.parse(urlString),
-        headers: {
-          ..._headers,
-          'x-user-tag': Uri.encodeQueryComponent('1'),
-        },
-        body: body,
-      ),
+    });
+    options.headers.addAll({
+      ..._headers,
+      'x-user-tag': Uri.encodeQueryComponent('1'),
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     final responseData = jsonDecode(response.body);
@@ -152,20 +150,47 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   Future<http.Response> deleteTodo(int id) async {
     final urlString =
         _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final body = {
+    final options = FormRequestOptions('DELETE', Uri.parse(urlString));
+    options.fields.addAll({
       ..._parameters,
-    };
-    final response = await doWithClient(
-      (client) => client.delete(
-        Uri.parse(urlString),
-        headers: {
-          ..._headers,
-        },
-        body: body,
-      ),
+    });
+    options.headers.addAll({
+      ..._headers,
+    });
+    final response = await doRequest(
+      options,
       chain: _chain,
     );
     return response;
+  }
+
+  @override
+  Future<String> upload(
+    String type,
+    String from,
+    AddTodo todo,
+    String imagePath,
+  ) async {
+    final urlString =
+        _encodeUrl('https://jsonplaceholder.typicode.com/upload', {});
+    final options = MultipartRequestOptions('POST', Uri.parse(urlString));
+    options.headers.addAll({
+      ..._headers,
+      'type': Uri.encodeQueryComponent(type),
+    });
+    options.fields.addAll({
+      ..._parameters,
+      'from': from,
+      ...todo.toJson(),
+    });
+    options.files.add(
+        MultipartFilePart('imagePath', imagePath, contentType: 'image/jpeg'));
+    final response = await doRequest(
+      options,
+      chain: _chain,
+      timeout: 60000,
+    );
+    return response.body;
   }
 
   String _encodeUrl(

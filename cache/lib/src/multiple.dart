@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'store.dart';
 
-class MultipleCache extends CacheStore {
+class MultipleCache extends AsyncCacheStore {
   final List<CacheStore> _stores;
 
   MultipleCache(this._stores);
@@ -14,10 +14,10 @@ class MultipleCache extends CacheStore {
   }
 
   @override
-  FutureOr<Object?> get(String name, String key) async {
+  Object? get(String name, String key) async {
     Object? result;
     for (var store in _stores) {
-      result = await store.get(name, key);
+      result = store.get(name, key);
       if (result != null) {
         break;
       }
@@ -26,7 +26,7 @@ class MultipleCache extends CacheStore {
   }
 
   @override
-  void put(String name, String key, Object value, {int? expires}) {
+  void put(String name, String key, Object value, {int? expires}) async {
     for (var store in _stores) {
       store.put(name, key, value, expires: expires);
     }
@@ -36,6 +36,28 @@ class MultipleCache extends CacheStore {
   void remove(String name, String key) {
     for (var store in _stores) {
       store.remove(name, key);
+    }
+  }
+
+  @override
+  Future<Object?> asyncGet(String name, String key) async {
+    final asyncStores = _stores.whereType<AsyncCacheStore>();
+    Object? result;
+    for (var store in asyncStores) {
+      result = await store.asyncGet(name, key);
+      if (result != null) {
+        break;
+      }
+    }
+    return result;
+  }
+
+  @override
+  Future<void> asyncPut(String name, String key, Object value,
+      {int? expires}) async {
+    final asyncStores = _stores.whereType<AsyncCacheStore>();
+    for (var store in asyncStores) {
+      await store.asyncPut(name, key, value, expires: expires);
     }
   }
 }

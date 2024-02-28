@@ -16,8 +16,8 @@ class NavigateCollector {
     _linkNodes.sort((a, b) => a.compareTo(b));
     final lib = Library((lb) {
       lb.body.add(Directive.import('package:flutter/material.dart'));
-      lb.body.add(
-          Directive.import('package:flutter_annotation_router/flutter_annotation_router.dart'));
+      lb.body.add(Directive.import(
+          'package:flutter_annotation_router/flutter_annotation_router.dart'));
       _linkNodes
           .expand((element) => element.values.map((e) => e.import))
           .where((element) => element != null)
@@ -56,6 +56,13 @@ class NavigateCollector {
           }
           final argExpr =
               "Map<String, dynamic> args = {${values.isEmpty ? '' : values.join(',')}};";
+          eb.fields.add(Field((fb) {
+            fb.static = true;
+            fb.modifier = FieldModifier.constant;
+            fb.type = refer('String');
+            fb.name = node.routeName;
+            fb.assignment = Code("'${node.routePath}'");
+          }));
           // toXXX
           if (node.toSelf) {
             eb.methods.add(Method((mb) {
@@ -64,13 +71,13 @@ class NavigateCollector {
               mb.types.add(refer('T'));
               mb.optionalParameters.addAll(parameters);
               final source =
-                  "return $navigator.pushNamed<T>('${node.routePath}', arguments: args);";
+                  "return $navigator.pushNamed<T>(${node.routeName}, arguments: args);";
               StringBuffer code = StringBuffer();
               code.writeln(argExpr);
               if (enableRouteGuard) {
                 mb.modifier = MethodModifier.async;
                 code.writeln(
-                    "final allowed = await RouteChain.shared.push('${node.routePath}', args);");
+                    "final allowed = await RouteChain.shared.push(${node.routeName}, args);");
                 code.writeln("if (allowed) {");
                 code.writeln(source);
                 code.writeln("}");
@@ -93,13 +100,13 @@ class NavigateCollector {
               }));
               mb.optionalParameters.addAll(parameters);
               final source =
-                  "return $navigator.pushNamedAndRemoveUntil<T>('${node.routePath}', ModalRoute.withName(predicate), arguments: args);";
+                  "return $navigator.pushNamedAndRemoveUntil<T>(${node.routeName}, ModalRoute.withName(predicate), arguments: args);";
               StringBuffer code = StringBuffer();
               code.writeln(argExpr);
               if (enableRouteGuard) {
                 mb.modifier = MethodModifier.async;
                 code.writeln(
-                    "bool allowed = await RouteChain.shared.push('${node.routePath}', args);");
+                    "bool allowed = await RouteChain.shared.push(${node.routeName}, args);");
                 code.writeln("if (allowed) {");
                 code.writeln(
                     "allowed = await RouteChain.shared.popTo(predicate);");
@@ -126,7 +133,7 @@ class NavigateCollector {
               }));
               mb.optionalParameters.addAll(parameters);
               final source =
-                  "return $navigator.pushReplacementNamed<T, R>('${node.routePath}', result: result, arguments: args);";
+                  "return $navigator.pushReplacementNamed<T, R>(${node.routeName}, result: result, arguments: args);";
               StringBuffer code = StringBuffer();
               if (enableRouteGuard) {
                 mb.modifier = MethodModifier.async;
@@ -134,7 +141,7 @@ class NavigateCollector {
                 code.writeln('if (!allowed) {return null;}');
                 code.writeln(argExpr);
                 code.writeln(
-                    "allowed = await RouteChain.shared.push('${node.routePath}', args);");
+                    "allowed = await RouteChain.shared.push(${node.routeName}, args);");
                 code.writeln("if (allowed) {$source}");
                 code.writeln("return null;");
               } else {
@@ -150,9 +157,9 @@ class NavigateCollector {
               mb.returns = refer('void');
               mb.name = 'backTo${node.alias}';
               final source =
-                  "$navigator.popUntil(ModalRoute.withName('${node.routePath}'));";
+                  "$navigator.popUntil(ModalRoute.withName(${node.routeName}));";
               mb.body = Code(enableRouteGuard
-                  ? "RouteChain.shared.popTo('${node.routePath}').then((allowed) {if (allowed) {$source}});"
+                  ? "RouteChain.shared.popTo(${node.routeName}).then((allowed) {if (allowed) {$source}});"
                   : source);
             }));
           }
@@ -229,8 +236,10 @@ class NavigateCollector {
             : null,
       ));
     }
+    final alias = annotation.peek('alias')?.stringValue ?? element.displayName;
     _linkNodes.add(_LinkNode(
-      alias: annotation.peek('alias')?.stringValue ?? element.displayName,
+      alias: alias,
+      routeName: '${alias}Route',
       routePath: annotation.read('path').stringValue,
       values: values,
       toSelf: annotation.read('toSelf').boolValue,
@@ -243,6 +252,7 @@ class NavigateCollector {
 }
 
 class _LinkNode implements Comparable<_LinkNode> {
+  final String routeName;
   final String routePath;
   final String alias;
   final List<_LinkValue> values;
@@ -253,6 +263,7 @@ class _LinkNode implements Comparable<_LinkNode> {
   final bool popAndToSelf;
 
   const _LinkNode({
+    required this.routeName,
     required this.routePath,
     required this.alias,
     required this.values,

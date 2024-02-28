@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-FB=${HOME}/fvm/versions/3.7.0/bin/flutter
+FB=../.fvm/flutter_sdk/bin/dart
 
-$FB pub run build_runner clean
+$FB run build_runner clean
 
-$FB pub run build_runner build --delete-conflicting-outputs
+$FB run build_runner build --delete-conflicting-outputs

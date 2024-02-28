@@ -129,13 +129,13 @@ class _Uint8ListCoder extends FieldCoder<Uint8List, Object> {
   @override
   Uint8List decode(Object value) {
     if (value is List) {
-      return Uint8List.fromList(value as List<int>);
+      return Uint8List.fromList(List<int>.from(value));
     }
     return Uint8List(0);
   }
 
   @override
   Object encode(Uint8List? value) {
-    return value?.toList(growable: false) ?? List<int>.empty();
+    return value ?? Uint8List(0);
   }
 }
