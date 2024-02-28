@@ -1,0 +1,41 @@
+targets:
+  $default:
+    builders:
+      flutter_router_generator:
+        enabled: true
+
+builders:
+  route_page_builder:
+    target: ":flutter_router_generator"
+    import: 'package:flutter_router_generator/builder.dart'
+    builder_factories: [ 'routePageBuilder' ]
+    build_extensions: { '.dart': [ '.rp.dart' ] }
+    auto_apply: root_package
+    build_to: source
+    runs_before: [ 'flutter_router_generator|navigate_helper_builder' ]
+
+  route_guard_builder:
+    target: ":flutter_router_generator"
+    import: 'package:flutter_router_generator/builder.dart'
+    builder_factories: [ 'routeGuardBuilder' ]
+    build_extensions: { '.dart': [ '.rg.dart' ] }
+    auto_apply: root_package
+    build_to: source
+    runs_before: [ 'flutter_router_generator|navigate_helper_builder' ]
+
+  navigate_helper_builder:
+    target: ":flutter_router_generator"
+    import: 'package:flutter_router_generator/builder.dart'
+    builder_factories: [ 'navigateHelperBuilder' ]
+    build_extensions: { '.dart': [ '.navigate.dart' ] }
+    auto_apply: root_package
+    build_to: source
+    runs_before: [ 'flutter_router_generator|annotation_router_builder' ]
+
+  annotation_router_builder:
+    target: ":flutter_router_generator"
+    import: 'package:flutter_router_generator/builder.dart'
+    builder_factories: [ 'annotationRouterBuilder' ]
+    build_extensions: { '.dart': [ '.route.dart' ] }
+    auto_apply: root_package
+    build_to: source

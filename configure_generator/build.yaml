@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      flutter_configure_generator:
+        enabled: true
+
+builders:
+  config_builder:
+    target: ":flutter_configure_generator"
+    import: 'package:flutter_configure_generator/builder.dart'
+    builder_factories: [ 'configBuilder' ]
+    build_extensions: { '.dart': [ '.cfg.dart' ] }
+    auto_apply: root_package
+    build_to: source

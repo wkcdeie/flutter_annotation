@@ -1,0 +1,14 @@
+name: flutter_annotation_cache
+description: A new Flutter project.
+version: 0.0.1
+homepage:
+
+environment:
+  sdk: '>=2.19.0 <3.0.0'
+
+dependencies:
+  synchronized: ^3.1.0
+
+dev_dependencies:
+  test: any
+  flutter_lints: ^2.0.0

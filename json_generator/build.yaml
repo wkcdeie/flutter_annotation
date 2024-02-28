@@ -1,0 +1,22 @@
+targets:
+  $default:
+    builders:
+      flutter_json_generator:
+        enabled: true
+
+builders:
+  json_enum_builder:
+    target: ":flutter_json_generator"
+    import: 'package:flutter_json_generator/builder.dart'
+    builder_factories: [ 'jsonEnumBuilder' ]
+    build_extensions: { '.dart': [ '.enum.dart' ] }
+    auto_apply: root_package
+    build_to: source
+
+  json_object_builder:
+    target: ":flutter_json_generator"
+    import: 'package:flutter_json_generator/builder.dart'
+    builder_factories: [ 'jsonObjectBuilder' ]
+    build_extensions: { '.dart': [ '.json.dart' ] }
+    auto_apply: root_package
+    build_to: source

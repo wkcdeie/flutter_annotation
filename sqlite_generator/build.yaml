@@ -1,0 +1,22 @@
+targets:
+  $default:
+    builders:
+      flutter_sqlite_generator:
+        enabled: true
+
+builders:
+  database_builder:
+    target: ":flutter_sqlite_generator"
+    import: 'package:flutter_sqlite_generator/builder.dart'
+    builder_factories: [ 'databaseBuilder' ]
+    build_extensions: { '.dart': [ '.db.dart' ] }
+    auto_apply: root_package
+    build_to: source
+
+  repository_builder:
+    target: ":flutter_sqlite_generator"
+    import: 'package:flutter_sqlite_generator/builder.dart'
+    builder_factories: [ 'repositoryBuilder' ]
+    build_extensions: { '.dart': [ '.dao.dart' ] }
+    auto_apply: root_package
+    build_to: source
