@@ -4,23 +4,18 @@ import 'options.dart';
 import 'adapter.dart';
 
 class HttpChain implements HttpMiddleware {
-  static HttpChain? _instance;
-
   final List<_MiddlewareDispatcher> _middlewares = [];
-
-  static HttpChain get shared {
-    _instance ??= HttpChain();
-    return _instance!;
-  }
 
   void add(String path, HttpMiddleware dispatcher) {
     _middlewares.add(_MiddlewareDispatcher(path, dispatcher));
   }
 
-  void remove(String path) {
-    for (int i = 0; i < _middlewares.length; i++) {
-      if (_middlewares[i].matcher.pattern == path) {
+  void removeWhere(bool Function(String, HttpMiddleware) test) {
+    for (int i = _middlewares.length - 1; i >= 0; --i) {
+      final middleware = _middlewares[i];
+      if (test(middleware.matcher.pattern, middleware.dispatcher)) {
         _middlewares.removeAt(i);
+        i = _middlewares.length;
       }
     }
   }

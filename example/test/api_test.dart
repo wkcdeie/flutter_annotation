@@ -3,16 +3,18 @@ import 'package:example/http/todo.dart';
 import 'package:flutter_annotation_http/flutter_annotation_http.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:example/main.middleware.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 
 void main() {
   // HttpOverrides.global = ProxyHttpOverrides(
   //   host: '127.0.0.1',
   //   port: '8889',
   // );
-
-  final api = JsonPlaceholderApi(HttpChain.shared);
+  final api = JsonPlaceholderApi();
   setUp(() {
     setupMiddlewares(printLogging: true);
+    RequestAdapter.defaultAdapter.chain
+        ?.add('/*', CookieJarMiddleware(CookieJar()));
   });
   test('Todo List', () async {
     final todos = await api.getTodos();

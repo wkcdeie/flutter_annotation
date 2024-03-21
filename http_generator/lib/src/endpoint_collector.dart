@@ -91,8 +91,6 @@ class EndpointCollector {
         cb.fields.add(_createField(
             'RetryOptions', '_retryOptions', 'RetryOptions(${pc.toString()})'));
       }
-      // final HttpChain _chain;
-      cb.fields.add(_createField('HttpChain?', '_chain', ''));
       // final RequestAdapter _adapter;
       cb.fields.add(_createField('RequestAdapter', '_adapter', ''));
       cb.constructors.add(Constructor((cb) {
@@ -101,14 +99,8 @@ class EndpointCollector {
           pb.name = 'adapter';
           pb.named = true;
         }));
-        cb.optionalParameters.add(Parameter((pb) {
-          pb.type = refer('HttpChain?');
-          pb.name = 'chain';
-          pb.named = true;
-        }));
         cb.initializers.add(
             Code('this._adapter = adapter ?? RequestAdapter.defaultAdapter'));
-        cb.initializers.add(Code('this._chain = chain'));
       }));
 
       for (var method in element.methods) {
@@ -221,7 +213,6 @@ class EndpointCollector {
         code.write('final response = ');
       }
       code.write('await _adapter.doRequest(options,');
-      code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
       }
@@ -309,7 +300,6 @@ class EndpointCollector {
         code.write('final response = ');
       }
       code.write('await _adapter.doRequest(options,');
-      code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
       }

@@ -7,11 +7,8 @@
 part of 'json_placeholder.dart';
 
 class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
-  _$JsonPlaceholderApiImpl({
-    RequestAdapter? adapter,
-    HttpChain? chain,
-  })  : this._adapter = adapter ?? RequestAdapter.defaultAdapter,
-        this._chain = chain;
+  _$JsonPlaceholderApiImpl({RequestAdapter? adapter})
+      : this._adapter = adapter ?? RequestAdapter.defaultAdapter;
 
   final RegExp _urlRegex = RegExp(r'^w+://');
 
@@ -20,8 +17,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   final Map<String, dynamic> _parameters = {'x-app-platform': 'ios'};
 
   final Map<String, String> _headers = {'x-lang-platform': 'Dart'};
-
-  final HttpChain? _chain;
 
   final RequestAdapter _adapter;
 
@@ -37,7 +32,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     final responseData = jsonDecode(response.body);
     if (responseData is Map) {
@@ -60,7 +54,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     final responseData = jsonDecode(response.body);
     if (responseData is List) {
@@ -82,10 +75,10 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     options.headers.addAll({
       ..._headers,
+      'content-type': 'application/json; charset=utf-8',
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     final responseData = jsonDecode(response.body);
     if (responseData is Map) {
@@ -112,7 +105,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     final responseData = jsonDecode(response.body);
     if (responseData is Map) {
@@ -139,7 +131,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     final responseData = jsonDecode(response.body);
     if (responseData is Map) {
@@ -161,7 +152,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
     );
     return response;
   }
@@ -188,7 +178,6 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
         MultipartFilePart('imagePath', imagePath, contentType: 'image/jpeg'));
     final response = await _adapter.doRequest(
       options,
-      chain: _chain,
       timeout: 60000,
     );
     return response.body;

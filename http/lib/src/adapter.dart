@@ -40,28 +40,31 @@ class RequestResponse {
 }
 
 abstract class RequestAdapter {
-  static final RequestAdapter defaultAdapter = _DefaultRequestAdapter();
+  static final RequestAdapter defaultAdapter =
+      DefaultRequestAdapter(chain: HttpChain());
+  HttpChain? chain;
 
   Future<RequestResponse> doRequest(RequestOptions options,
-      {HttpChain? chain,
-      RetryOptions? retryOptions,
-      int? timeout,
-      CancelToken? cancelToken});
+      {RetryOptions? retryOptions, int? timeout, CancelToken? cancelToken});
 }
 
-class _DefaultRequestAdapter implements RequestAdapter {
+class DefaultRequestAdapter implements RequestAdapter {
+  @override
+  HttpChain? chain;
+
+  DefaultRequestAdapter({this.chain});
+
   @override
   Future<RequestResponse> doRequest(RequestOptions options,
-      {HttpChain? chain,
-      RetryOptions? retryOptions,
+      {RetryOptions? retryOptions,
       int? timeout,
       CancelToken? cancelToken}) async {
     final client = AnnotationClient(
         retryOptions: retryOptions, timeout: timeout, cancelToken: cancelToken);
     try {
       RequestOptions newOptions = options;
-      if (chain != null) {
-        newOptions = await chain.onRequest(options);
+      if (this.chain != null) {
+        newOptions = await this.chain!.onRequest(options);
       }
       final request = await _buildRequest(newOptions);
       final streamedResponse = await client.send(request);
@@ -72,8 +75,8 @@ class _DefaultRequestAdapter implements RequestAdapter {
           statusText: response.reasonPhrase,
           headers: response.headers,
           bodyBytes: response.bodyBytes);
-      if (chain != null) {
-        newResponse = await chain.onResponse(newResponse);
+      if (this.chain != null) {
+        newResponse = await this.chain!.onResponse(newResponse);
       }
       return newResponse;
     } catch (e) {

@@ -38,8 +38,8 @@ class MiddlewareCollector {
         mb.returns = refer('void');
         mb.name = 'setupMiddlewares';
         mb.optionalParameters.add(Parameter((pb) {
-          pb.type = refer('HttpChain?');
-          pb.name = 'chain';
+          pb.type = refer('RequestAdapter?');
+          pb.name = 'adapter';
           pb.named = true;
         }));
         mb.optionalParameters.add(Parameter((pb) {
@@ -55,14 +55,16 @@ class MiddlewareCollector {
           pb.named = true;
         }));
         StringBuffer code = StringBuffer();
-        code.writeln("final ch = chain ?? HttpChain.shared;");
+        code.writeln("final chain = (adapter ?? RequestAdapter.defaultAdapter).chain;");
+        code.writeln('if (chain != null) {');
         for (var element in _nodes) {
-          code.writeln("ch.add('${element.pattern}', ${element.createFactory}());");
+          code.writeln("chain.add('${element.pattern}', ${element.createFactory}());");
         }
         code.writeln(
-            "if(printCurl){ch.add('/*', const PrintCurlMiddleware());}");
+            "if(printCurl){chain.add('/*', const PrintCurlMiddleware());}");
         code.writeln(
-            "if(printLogging){ch.add('/*', const PrintLoggingMiddleware());}");
+            "if(printLogging){chain.add('/*', const PrintLoggingMiddleware());}");
+        code.writeln('}');
         mb.body = Code(code.toString());
       }));
     });
