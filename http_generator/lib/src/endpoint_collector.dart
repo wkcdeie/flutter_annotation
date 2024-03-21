@@ -30,14 +30,14 @@ class EndpointCollector {
   bool _hasParameters = false;
   bool _hasRetry = false;
 
-  // String? _baseUrl;
+  String? _baseUrl;
   int? _timeout;
 
   EndpointCollector(this.fileName);
 
   String collect(ClassElement element, ConstantReader annotation) {
     _timeout = annotation.peek('timeout')?.intValue;
-    final baseUrl = annotation.peek('baseUrl')?.stringValue;
+    _baseUrl = annotation.peek('baseUrl')?.stringValue;
     final parameterField = annotation.peek('parameters')?.objectValue;
     final headerField = annotation.peek('headers')?.objectValue;
     final retryField = annotation.peek('retryOptions')?.objectValue;
@@ -49,6 +49,13 @@ class EndpointCollector {
     final cls = Class((cb) {
       cb.name = '_\$${element.displayName}Impl';
       cb.implements.add(refer(element.displayName));
+      // final RegExp _urlRegex = RegExp();
+      cb.fields.add(_createField('RegExp', '_urlRegex', "RegExp(r'^\w+://')"));
+      // final String _baseUrl = '';
+      if (_baseUrl != null) {
+        cb.fields
+            .add(_createField('Uri', '_baseUri', "Uri.parse('$_baseUrl')"));
+      }
       if (_hasParameters) {
         // const String _parameters = {};
         cb.fields.add(_createField('Map<String, dynamic>', '_parameters',
@@ -86,11 +93,22 @@ class EndpointCollector {
       }
       // final HttpChain _chain;
       cb.fields.add(_createField('HttpChain?', '_chain', ''));
+      // final RequestAdapter _adapter;
+      cb.fields.add(_createField('RequestAdapter', '_adapter', ''));
       cb.constructors.add(Constructor((cb) {
         cb.optionalParameters.add(Parameter((pb) {
-          pb.name = '_chain';
-          pb.toThis = true;
+          pb.type = refer('RequestAdapter?');
+          pb.name = 'adapter';
+          pb.named = true;
         }));
+        cb.optionalParameters.add(Parameter((pb) {
+          pb.type = refer('HttpChain?');
+          pb.name = 'chain';
+          pb.named = true;
+        }));
+        cb.initializers.add(
+            Code('this._adapter = adapter ?? RequestAdapter.defaultAdapter'));
+        cb.initializers.add(Code('this._chain = chain'));
       }));
 
       for (var method in element.methods) {
@@ -99,13 +117,12 @@ class EndpointCollector {
         }
         DartObject? methodAnnotation = _getRequestMethodAnnotation(method);
         if (methodAnnotation != null) {
-          cb.methods.add(_createMethod(method, methodAnnotation, baseUrl));
+          cb.methods.add(_createMethod(method, methodAnnotation));
         } else {
           methodAnnotation = _multipartRequestChecker.firstAnnotationOf(method,
               throwOnUnresolved: false);
           if (methodAnnotation != null) {
-            cb.methods
-                .add(_createMultipartMethod(method, methodAnnotation, baseUrl));
+            cb.methods.add(_createMultipartMethod(method, methodAnnotation));
           }
         }
       }
@@ -130,8 +147,7 @@ class EndpointCollector {
     });
   }
 
-  Method _createMethod(
-      MethodElement method, DartObject annotation, String? baseUrl) {
+  Method _createMethod(MethodElement method, DartObject annotation) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -148,7 +164,7 @@ class EndpointCollector {
       final parser = _ParameterParser(
         requestMethod:
             annotation.type?.element?.displayName ?? RequestMethod.get.method,
-        requestPath: "${baseUrl ?? ''}${methodReader.read('path').stringValue}",
+        requestPath: methodReader.read('path').stringValue,
         headers: _parseHeaders(methodReader, isJsonRequest),
       );
       code.writeln(parser.parse(_addMethodParameters(method, mb)));
@@ -167,9 +183,9 @@ class EndpointCollector {
         code.writeln('};');
       }
       code.writeln(
-          "final urlString = _encodeUrl('${parser.requestPath}',${putQueryString ? 'queryParameters' : '{}'});");
+          "final uri = _encodeUrl('${parser.requestPath}',${putQueryString ? 'queryParameters' : '{}'});");
       code.writeln(
-          "final options = FormRequestOptions('${parser.requestMethod}', Uri.parse(urlString));");
+          "final options = FormRequestOptions('${parser.requestMethod}', uri);");
       // add body
       if (!parser.isNoBody &&
           (_hasParameters ||
@@ -204,7 +220,7 @@ class EndpointCollector {
       if (returnType != 'void') {
         code.write('final response = ');
       }
-      code.write('await doRequest(options,');
+      code.write('await _adapter.doRequest(options,');
       code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
@@ -224,8 +240,7 @@ class EndpointCollector {
     });
   }
 
-  Method _createMultipartMethod(
-      MethodElement method, DartObject annotation, String? baseUrl) {
+  Method _createMultipartMethod(MethodElement method, DartObject annotation) {
     final returnType = _getMethodReturnType(method.returnType);
     return Method((mb) {
       mb.annotations.add(refer('override'));
@@ -243,14 +258,13 @@ class EndpointCollector {
       final parser = _ParameterParser(
         requestMethod:
             annotation.type?.element?.displayName ?? RequestMethod.get.method,
-        requestPath: "${baseUrl ?? ''}${methodReader.read('path').stringValue}",
+        requestPath: methodReader.read('path').stringValue,
         headers: _parseHeaders(methodReader),
       );
       code.writeln(parser.parse(_addMethodParameters(method, mb)));
+      code.writeln("final uri = _encodeUrl('${parser.requestPath}', {});");
       code.writeln(
-          "final urlString = _encodeUrl('${parser.requestPath}', {});");
-      code.writeln(
-          "final options = MultipartRequestOptions('${requestMethod.toUpperCase()}', Uri.parse(urlString));");
+          "final options = MultipartRequestOptions('${requestMethod.toUpperCase()}', uri);");
       // add header
       if (_hasHeaders || parser.headers.isNotEmpty) {
         code.writeln('options.headers.addAll({');
@@ -294,7 +308,7 @@ class EndpointCollector {
       if (returnType != 'void') {
         code.write('final response = ');
       }
-      code.write('await doRequest(options,');
+      code.write('await _adapter.doRequest(options,');
       code.write('chain:_chain,');
       if (_hasRetry) {
         code.write('retryOptions:_retryOptions,');
@@ -316,7 +330,7 @@ class EndpointCollector {
 
   Method _encodeUrlMethod() {
     return Method((mb) {
-      mb.returns = refer('String');
+      mb.returns = refer('Uri');
       mb.name = '_encodeUrl';
       mb.requiredParameters.add(Parameter((pb) {
         pb.type = refer('String');
@@ -327,14 +341,16 @@ class EndpointCollector {
         pb.name = 'queryParameters';
       }));
       mb.body = Code("""
-        if (queryParameters.isEmpty) {
-          return urlPath;
-        }
-        final queryString = queryParameters.entries.map((e) => '\${Uri.encodeQueryComponent(e.key)}=\${e.value is String ? Uri.encodeQueryComponent(e.value) : e.value}').join('&');
-        if (urlPath.lastIndexOf('?') != -1) {
-          return '\$urlPath&\$queryString';
-        }
-        return '\$urlPath?\$queryString';""");
+      Uri uri = _baseUri;
+      if (_urlRegex.hasMatch(urlPath)) {
+        uri = Uri.parse(urlPath);
+      } else {
+        uri = _baseUri.replace(path: urlPath);
+      }
+      if (queryParameters.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParameters);
+      }
+      return uri;""");
     });
   }
 
@@ -361,7 +377,7 @@ class EndpointCollector {
     StringBuffer code = StringBuffer();
     const reason = 'Could not find acceptable representation.';
     final nonnullReturnType = fac.TypeSplitter.nonnullType(returnType);
-    if (nonnullReturnType == 'http.Response') {
+    if (nonnullReturnType == 'RequestResponse') {
       code.writeln('return response;');
     } else if (nonnullReturnType == 'void') {
     } else if (responseType == RequestMapping.byteHeader) {
@@ -530,7 +546,7 @@ class EndpointCollector {
       final result = mt.typeArguments.isNotEmpty
           ? mt.typeArguments.first.getDisplayString(withNullability: true)
           : 'dynamic';
-      return result == 'Response' ? 'http.$result' : result;
+      return result;
     }
     return mt.getDisplayString(withNullability: true);
   }
@@ -566,7 +582,6 @@ class _ParameterParser {
         code.writeln(
             "if (${node.name} == null) { throw ArgumentError.notNull('${node.name}');}");
       }
-      final isString = node.type == 'String';
       final nullCheckExp =
           node.isNullability && !node.isRequired && node.defaultValue == null
               ? 'if (${node.name} != null)'
@@ -581,8 +596,7 @@ class _ParameterParser {
           throw UnsupportedError(
               '`@PathVariable` decorated variable cannot be null');
         }
-        requestPath = requestPath.replaceAll('{${node.key}}',
-            '\$${isString ? '{Uri.encodeQueryComponent(${node.name})}' : node.name}');
+        requestPath = requestPath.replaceAll('{${node.key}}', '\$${node.name}');
       } else if (node.isHeader) {
         headers.add(
             "$nullCheckExp'${node.key}':Uri.encodeQueryComponent(${node.name}$defaultValueExp)");

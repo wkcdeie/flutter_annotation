@@ -9,3 +9,5 @@ export 'src/middleware.dart';
 export 'src/proxy.dart';
 export 'src/request.dart';
 export 'src/retry.dart';
+export 'src/options.dart';
+export 'src/adapter.dart';

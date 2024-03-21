@@ -7,7 +7,15 @@
 part of 'json_placeholder.dart';
 
 class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
-  _$JsonPlaceholderApiImpl([this._chain]);
+  _$JsonPlaceholderApiImpl({
+    RequestAdapter? adapter,
+    HttpChain? chain,
+  })  : this._adapter = adapter ?? RequestAdapter.defaultAdapter,
+        this._chain = chain;
+
+  final RegExp _urlRegex = RegExp(r'^w+://');
+
+  final Uri _baseUri = Uri.parse('https://jsonplaceholder.typicode.com');
 
   final Map<String, dynamic> _parameters = {'x-app-platform': 'ios'};
 
@@ -15,19 +23,19 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
 
   final HttpChain? _chain;
 
+  final RequestAdapter _adapter;
+
   @override
   Future<TodoModel> getTodo(String id) async {
     final queryParameters = {
       ..._parameters,
     };
-    final urlString = _encodeUrl(
-        'https://jsonplaceholder.typicode.com/todos/${Uri.encodeQueryComponent(id)}',
-        queryParameters);
-    final options = FormRequestOptions('GET', Uri.parse(urlString));
+    final uri = _encodeUrl('/todos/$id', queryParameters);
+    final options = FormRequestOptions('GET', uri);
     options.headers.addAll({
       ..._headers,
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -45,13 +53,12 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
       ..._parameters,
       if (title != null) 'title': title,
     };
-    final urlString = _encodeUrl(
-        'https://jsonplaceholder.typicode.com/todos', queryParameters);
-    final options = FormRequestOptions('GET', Uri.parse(urlString));
+    final uri = _encodeUrl('/todos', queryParameters);
+    final options = FormRequestOptions('GET', uri);
     options.headers.addAll({
       ..._headers,
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -67,18 +74,16 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
 
   @override
   Future<TodoModel> createTodo(AddTodo data) async {
-    final urlString =
-        _encodeUrl('https://jsonplaceholder.typicode.com/todos', {});
-    final options = FormRequestOptions('POST', Uri.parse(urlString));
+    final uri = _encodeUrl('/todos', {});
+    final options = FormRequestOptions('POST', uri);
     options.fields.addAll({
       ..._parameters,
       ...data.toJson(),
     });
     options.headers.addAll({
       ..._headers,
-      'content-type': 'application/json; charset=utf-8',
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -95,9 +100,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     int id,
     AddTodo data,
   ) async {
-    final urlString =
-        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final options = FormRequestOptions('PUT', Uri.parse(urlString));
+    final uri = _encodeUrl('/todos/$id', {});
+    final options = FormRequestOptions('PUT', uri);
     options.fields.addAll({
       ..._parameters,
       ..._todoToJson.call(data),
@@ -106,7 +110,7 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
       ..._headers,
       'content-type': 'application/json; charset=utf-8',
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -123,9 +127,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     int id,
     String title,
   ) async {
-    final urlString =
-        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final options = FormRequestOptions('PATCH', Uri.parse(urlString));
+    final uri = _encodeUrl('/todos/$id', {});
+    final options = FormRequestOptions('PATCH', uri);
     options.fields.addAll({
       ..._parameters,
       'title': title,
@@ -134,7 +137,7 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
       ..._headers,
       'x-user-tag': Uri.encodeQueryComponent('1'),
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -147,17 +150,16 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
   }
 
   @override
-  Future<http.Response> deleteTodo(int id) async {
-    final urlString =
-        _encodeUrl('https://jsonplaceholder.typicode.com/todos/$id', {});
-    final options = FormRequestOptions('DELETE', Uri.parse(urlString));
+  Future<RequestResponse> deleteTodo(int id) async {
+    final uri = _encodeUrl('/todos/$id', {});
+    final options = FormRequestOptions('DELETE', uri);
     options.fields.addAll({
       ..._parameters,
     });
     options.headers.addAll({
       ..._headers,
     });
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
     );
@@ -171,9 +173,8 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     AddTodo todo,
     String imagePath,
   ) async {
-    final urlString =
-        _encodeUrl('https://jsonplaceholder.typicode.com/upload', {});
-    final options = MultipartRequestOptions('POST', Uri.parse(urlString));
+    final uri = _encodeUrl('/upload', {});
+    final options = MultipartRequestOptions('POST', uri);
     options.headers.addAll({
       ..._headers,
       'type': Uri.encodeQueryComponent(type),
@@ -185,7 +186,7 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     });
     options.files.add(
         MultipartFilePart('imagePath', imagePath, contentType: 'image/jpeg'));
-    final response = await doRequest(
+    final response = await _adapter.doRequest(
       options,
       chain: _chain,
       timeout: 60000,
@@ -193,20 +194,19 @@ class _$JsonPlaceholderApiImpl implements JsonPlaceholderApi {
     return response.body;
   }
 
-  String _encodeUrl(
+  Uri _encodeUrl(
     String urlPath,
     Map<String, dynamic> queryParameters,
   ) {
-    if (queryParameters.isEmpty) {
-      return urlPath;
+    Uri uri = _baseUri;
+    if (_urlRegex.hasMatch(urlPath)) {
+      uri = Uri.parse(urlPath);
+    } else {
+      uri = _baseUri.replace(path: urlPath);
     }
-    final queryString = queryParameters.entries
-        .map((e) =>
-            '${Uri.encodeQueryComponent(e.key)}=${e.value is String ? Uri.encodeQueryComponent(e.value) : e.value}')
-        .join('&');
-    if (urlPath.lastIndexOf('?') != -1) {
-      return '$urlPath&$queryString';
+    if (queryParameters.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParameters);
     }
-    return '$urlPath?$queryString';
+    return uri;
   }
 }

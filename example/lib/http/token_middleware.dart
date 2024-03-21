@@ -1,5 +1,4 @@
 import 'package:flutter_annotation_http/flutter_annotation_http.dart';
-import 'package:http/http.dart';
 
 @Middleware('/*')
 class TokenMiddleware implements HttpMiddleware {
@@ -19,7 +18,7 @@ class TokenMiddleware implements HttpMiddleware {
   }
 
   @override
-  Future<Response> onResponse(Response response) {
+  Future<RequestResponse> onResponse(RequestResponse response) {
     if (response.headers[headerKey] != null) {
       _token = response.headers[headerKey];
     }

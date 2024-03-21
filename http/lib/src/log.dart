@@ -2,9 +2,9 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:http/http.dart';
-
+import 'options.dart';
 import 'middleware.dart';
+import 'adapter.dart';
 
 class PrintCurlMiddleware implements HttpMiddleware {
   /// the severity level (a value between 0 and 2000);
@@ -42,7 +42,7 @@ class PrintCurlMiddleware implements HttpMiddleware {
   }
 
   @override
-  Future<Response> onResponse(Response response) {
+  Future<RequestResponse> onResponse(RequestResponse response) {
     return Future.value(response);
   }
 }
@@ -126,7 +126,8 @@ class PrintLoggingMiddleware implements HttpMiddleware {
         options.headers.forEach((key, value) {
           msg.writeln('$key:$value');
         });
-        if (contentLength != null) {
+        if (options.headers[HttpHeaders.contentLengthHeader] == null &&
+            contentLength != null) {
           msg.writeln('${HttpHeaders.contentLengthHeader}:$contentLength');
         }
       }
@@ -153,26 +154,32 @@ class PrintLoggingMiddleware implements HttpMiddleware {
   }
 
   @override
-  Future<Response> onResponse(Response response) {
+  Future<RequestResponse> onResponse(RequestResponse response) {
     if (outputLogLevel != OutputLogLevel.none) {
       StringBuffer msg = StringBuffer();
       msg.writeln();
-      msg.writeln(
-          '<-- ${response.statusCode}${response.reasonPhrase != null ? ' ${response.reasonPhrase}' : ''} ${response.request?.method} ${response.request?.url}${!_logBody && _logHeader ? ' (${response.bodyBytes.length}-byte body)' : ''}');
+      msg.write('<-- ${response.statusCode} ${response.request.method}');
+      if (response.statusText != null) {
+        msg.write(' ${response.statusText}');
+      }
+      if (!_logBody && _logHeader) {
+        msg.write(' (${response.bodyBytes.length}-byte body)');
+      }
+      msg.writeln();
       if (_logHeader) {
         response.headers.forEach((key, value) {
           msg.writeln('$key:$value');
         });
         if (response.headers[HttpHeaders.contentLengthHeader] == null) {
           msg.writeln(
-              '${HttpHeaders.contentLengthHeader}:${response.contentLength}');
+              '${HttpHeaders.contentLengthHeader}:${response.bodyBytes.length}');
         }
       }
       if (_logBody && response.bodyBytes.isNotEmpty) {
         msg.writeln();
         if (response.bodyBytes.length > 1024 * 128) {
           msg.writeln(
-              'The response content exceeds 128kb and the output is ignored.');
+              'If the length of the response body exceeds the limit of 128 KB, printing is ignored.');
         } else {
           final checkBytes = response.bodyBytes.length > 1024
               ? response.bodyBytes.sublist(0, 1024)
@@ -181,7 +188,7 @@ class PrintLoggingMiddleware implements HttpMiddleware {
             msg.writeln(response.body);
           } else {
             msg.writeln(
-                'Non-plain text data: ${response.headers[HttpHeaders.contentTypeHeader]}');
+                'Not printable ASCII characters: ${response.headers[HttpHeaders.contentTypeHeader]}');
           }
         }
       }
@@ -194,18 +201,20 @@ class PrintLoggingMiddleware implements HttpMiddleware {
   }
 
   bool _isPlainText(Uint8List source) {
-    int whiteListCharCount = 0;
+    bool result = true;
     for (int i = 0; i < source.length; i++) {
-      int byte = source[i];
-      if (byte == 9 ||
-          byte == 10 ||
-          byte == 13 ||
-          (byte >= 32 && byte <= 255)) {
-        whiteListCharCount++;
-      } else if (byte <= 6 || (byte >= 14 && byte <= 31)) {
-        return false;
+      if (!_isPrintableCharCode(source[i])) {
+        result = false;
+        break;
       }
     }
-    return whiteListCharCount >= 1;
+    return result;
+  }
+
+  bool _isPrintableCharCode(int charCode) {
+    return (charCode >= 32 && charCode <= 126) ||
+        charCode == 9 ||
+        charCode == 10 ||
+        charCode == 13;
   }
 }

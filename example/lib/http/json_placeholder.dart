@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_annotation_http/flutter_annotation_http.dart';
-import 'package:http/http.dart' as http;
 import 'todo.dart';
 
 part 'json_placeholder.api.dart';
@@ -13,7 +12,7 @@ part 'json_placeholder.api.dart';
 )
 abstract class JsonPlaceholderApi {
   factory JsonPlaceholderApi([HttpChain? chain]) =>
-      _$JsonPlaceholderApiImpl(chain);
+      _$JsonPlaceholderApiImpl(chain:chain);
 
   @GET('/todos/{id}', produce: RequestMapping.jsonHeader)
   Future<TodoModel> getTodo(@PathVariable() String id);
@@ -32,7 +31,7 @@ abstract class JsonPlaceholderApi {
   Future<TodoModel> patchTodo(@PathVariable() int id, String title);
 
   @DELETE('/todos/{id}')
-  Future<http.Response> deleteTodo(@PathVariable() int id);
+  Future<RequestResponse> deleteTodo(@PathVariable() int id);
 
   @Multipart('/upload', produce: RequestMapping.textHeader, timeout: 60 * 1000)
   Future<String> upload(

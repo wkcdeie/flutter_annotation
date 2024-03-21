@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'package:http/http.dart' as http;
 import 'middleware.dart';
+import 'options.dart';
+import 'adapter.dart';
 
 class HttpChain implements HttpMiddleware {
   static HttpChain? _instance;
@@ -37,22 +38,16 @@ class HttpChain implements HttpMiddleware {
   }
 
   @override
-  Future<http.Response> onResponse(http.Response response) async {
-    if (response.request == null) {
-      return response;
-    }
-    final middlewares = _findMiddleware(response.request!.url.path);
-    http.Response newResponse = response;
+  Future<RequestResponse> onResponse(RequestResponse response) async {
+    final middlewares = _findMiddleware(response.request.url.path);
+    RequestResponse newResponse = response;
     for (var element in middlewares) {
-      newResponse = await element.onResponse(http.Response.bytes(
-        newResponse.bodyBytes,
-        newResponse.statusCode,
-        request: newResponse.request,
-        headers: newResponse.headers,
-        isRedirect: newResponse.isRedirect,
-        persistentConnection: newResponse.persistentConnection,
-        reasonPhrase: newResponse.reasonPhrase,
-      ));
+      newResponse = await element.onResponse(RequestResponse(
+          request: newResponse.request,
+          statusCode: newResponse.statusCode,
+          statusText: newResponse.statusText,
+          headers: newResponse.headers,
+          bodyBytes: newResponse.bodyBytes));
     }
     return newResponse;
   }
